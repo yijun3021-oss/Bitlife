@@ -97,49 +97,92 @@ describe('game primitives', () => {
 describe('seed content', () => {
   const requiredEventIds = [
     'birth_sunny',
-    'child_book',
-    'school_test',
-    'family_meal',
-    'adult_walk',
-    'work_rush',
-    'money_wallet',
     'birth_rainy',
     'birth_busy_home',
+    'birth_quiet_night',
+    'birth_small_apartment',
+    'child_book',
     'child_neighbor',
     'child_lost_toy',
     'child_tree_climb',
+    'child_first_drawing',
+    'child_puddle_jump',
+    'child_shared_snack',
+    'child_library_card',
+    'child_bedtime_question',
+    'child_music_corner',
+    'school_test',
     'school_group_project',
     'school_bully_choice',
     'school_art_day',
     'school_sports_day',
+    'school_science_board',
+    'school_late_homework',
+    'school_new_friend',
+    'school_teacher_praise',
+    'school_bus_delay',
+    'family_meal',
     'family_argument',
     'family_sibling_game',
     'family_parent_tired',
+    'family_weekend_cleaning',
+    'family_small_gift',
+    'family_photo_album',
+    'family_sick_parent',
+    'family_shared_errand',
+    'family_holiday_call',
+    'adult_walk',
     'adult_room_clean',
     'adult_old_friend',
     'adult_bad_sleep',
+    'adult_crowded_train',
+    'adult_new_hobby',
+    'adult_quiet_cafe',
+    'adult_missed_alarm',
+    'adult_neighbor_help',
+    'adult_long_queue',
+    'work_rush',
     'work_kind_customer',
     'work_mistake',
     'work_extra_shift',
+    'work_team_lunch',
+    'work_confusing_email',
+    'work_small_praise',
+    'work_commute_delay',
+    'work_desk_cleanup',
+    'work_new_task',
+    'money_wallet',
     'money_small_bonus',
     'money_broken_phone',
+    'money_sale_choice',
+    'money_unexpected_bill',
     'health_minor_fever',
     'health_knee_pain',
+    'health_bad_meal',
+    'health_good_sleep',
+    'health_checkup_note',
     'elder_quiet_morning',
     'elder_memory_box',
+    'elder_slow_walk',
+    'elder_family_visit',
+    'elder_old_song',
   ];
 
   it('ships enough original P0 events for the first playable loop', () => {
-    expect(events.length).toBeGreaterThanOrEqual(24);
+    expect(events.length).toBeGreaterThanOrEqual(65);
     expect(events.every((event) => event.choices.length >= 1)).toBe(true);
+
+    const tags = new Set(events.flatMap((event) => event.tags));
+    expect(Array.from(tags)).toEqual(
+      expect.arrayContaining(['birth', 'child', 'school', 'family', 'adult', 'work', 'money', 'health', 'elder']),
+    );
   });
 
-  it('ships exactly the required Task 4 event ids', () => {
+  it('ships the required final P0 event ids without duplicates', () => {
     const eventIds = events.map((event) => event.id);
 
-    expect(eventIds).toHaveLength(requiredEventIds.length);
-    expect(new Set(eventIds)).toHaveLength(requiredEventIds.length);
-    expect([...eventIds].sort()).toEqual([...requiredEventIds].sort());
+    expect(new Set(eventIds)).toHaveLength(eventIds.length);
+    expect(eventIds).toEqual(expect.arrayContaining(requiredEventIds));
   });
 
   it('requires a job for work bonus events', () => {
