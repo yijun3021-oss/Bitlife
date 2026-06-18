@@ -1,12 +1,17 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ageUp, createNewLife } from '../game/engine';
 import type { LifeState } from '../game/types';
 import { SAVE_KEY, useLifeStore } from './lifeStore';
 
 describe('life store', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     localStorage.clear();
     useLifeStore.setState(useLifeStore.getInitialState(), true);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('creates and persists a single life', () => {
@@ -48,6 +53,22 @@ describe('life store', () => {
     expect(useLifeStore.getState().life).toBeNull();
   });
 
+  it('ignores invalid saved life shapes when loading', () => {
+    localStorage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 1,
+        locale: 'en-US',
+        life: { version: 1, character: { age: 'not-a-number', alive: true } },
+      }),
+    );
+
+    useLifeStore.getState().loadLife();
+
+    expect(useLifeStore.getState().locale).toBe('zh-CN');
+    expect(useLifeStore.getState().life).toBeNull();
+  });
+
   it('persists locale and updates an existing life locale', () => {
     useLifeStore.getState().createLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn' });
 
@@ -73,6 +94,27 @@ describe('life store', () => {
     expect(localStorage.getItem(SAVE_KEY)).toBeNull();
   });
 
+  it('does not throw when storage writes or removes fail', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage full');
+    });
+
+    expect(() => {
+      useLifeStore.getState().createLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn' });
+    }).not.toThrow();
+    expect(useLifeStore.getState().life?.character.name).toBe('Mina Lin');
+
+    vi.restoreAllMocks();
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new Error('storage blocked');
+    });
+
+    expect(() => {
+      useLifeStore.getState().clearLife();
+    }).not.toThrow();
+    expect(useLifeStore.getState().life).toBeNull();
+  });
+
   it('runs find job activity through engine behavior for an eligible adult', () => {
     const adult = ageUpTo(
       createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }),
@@ -84,6 +126,48 @@ describe('life store', () => {
 
     expect(useLifeStore.getState().life?.job?.jobId).toBe('support_agent');
     expect(localStorage.getItem(SAVE_KEY)).toContain('support_agent');
+  });
+
+  it('does not write a save for invalid activity ids or underage find job', () => {
+    const infant = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
+    useLifeStore.setState({ life: infant });
+
+    useLifeStore.getState().runActivity('missing_activity');
+    useLifeStore.getState().runActivity('find_job');
+
+    expect(useLifeStore.getState().life).toBe(infant);
+    expect(localStorage.getItem(SAVE_KEY)).toBeNull();
+  });
+
+  it('does not write a save for invalid choices or missing current events', () => {
+    const life = {
+      ...createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }),
+      currentEvent: null,
+    };
+    useLifeStore.setState({ life });
+
+    useLifeStore.getState().chooseEvent('missing_choice');
+
+    expect(useLifeStore.getState().life).toBe(life);
+    expect(localStorage.getItem(SAVE_KEY)).toBeNull();
+  });
+
+  it('does not age up, retab, or save an already dead life', () => {
+    const deadLife: LifeState = {
+      ...createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }),
+      character: {
+        ...createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }).character,
+        alive: false,
+      },
+      currentEvent: null,
+    };
+    useLifeStore.setState({ life: deadLife, activeTab: 'activities' });
+
+    useLifeStore.getState().ageUpLife();
+
+    expect(useLifeStore.getState().life).toBe(deadLife);
+    expect(useLifeStore.getState().activeTab).toBe('activities');
+    expect(localStorage.getItem(SAVE_KEY)).toBeNull();
   });
 });
 

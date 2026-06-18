@@ -57,7 +57,7 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
   },
 
   clearLife: () => {
-    localStorage.removeItem(SAVE_KEY);
+    removeSave();
     set({ life: null, activeTab: 'life' });
   },
 
@@ -74,12 +74,11 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
 
   ageUpLife: () => {
     const currentLife = get().life;
-    if (currentLife === null) {
+    if (currentLife === null || !currentLife.character.alive) {
       return;
     }
     const life = ageUp(currentLife, Date.now() % 100000);
-    set({ life, activeTab: life.character.alive ? 'life' : 'profile' });
-    writeSave(get().locale, life);
+    updateLife(currentLife, life, get().locale, set, { activeTab: life.character.alive ? 'life' : 'profile' });
   },
 
   chooseEvent: (choiceId) => {
@@ -88,8 +87,7 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
       return;
     }
     const life = applyChoice(currentLife, choiceId);
-    set({ life });
-    writeSave(get().locale, life);
+    updateLife(currentLife, life, get().locale, set);
   },
 
   runActivity: (activityId) => {
@@ -98,21 +96,19 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
       return;
     }
 
-    if (activityId === 'find_job') {
-      const life = findJob(currentLife);
-      set({ life });
-      writeSave(get().locale, life);
-      return;
-    }
-
     const activity = activities.find((item) => item.id === activityId);
     if (activity === undefined || currentLife.character.age < activity.minAge) {
       return;
     }
 
+    if (activityId === 'find_job') {
+      const life = findJob(currentLife);
+      updateLife(currentLife, life, get().locale, set);
+      return;
+    }
+
     const life = applyActivity(currentLife, activity.effects);
-    set({ life });
-    writeSave(get().locale, life);
+    updateLife(currentLife, life, get().locale, set);
   },
 }));
 
@@ -124,7 +120,7 @@ function readSave(): SaveRecord | null {
     }
 
     const save = JSON.parse(rawSave) as Partial<SaveRecord>;
-    if (save.version !== 1 || !isLocale(save.locale)) {
+    if (save.version !== 1 || !isLocale(save.locale) || !isSavedLife(save.life)) {
       return null;
     }
 
@@ -140,9 +136,54 @@ function readSave(): SaveRecord | null {
 
 function writeSave(locale: Locale, life: LifeState | null): void {
   const save: SaveRecord = { version: 1, locale, life };
-  localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+  } catch {
+    // Storage can be unavailable or full; app state should still update.
+  }
+}
+
+function removeSave(): void {
+  try {
+    localStorage.removeItem(SAVE_KEY);
+  } catch {
+    // Storage can be unavailable; clearing in-memory state should still work.
+  }
+}
+
+function updateLife(
+  currentLife: LifeState,
+  life: LifeState,
+  locale: Locale,
+  set: (partial: Partial<LifeStoreState>) => void,
+  extraState: Partial<Pick<LifeStoreState, 'activeTab'>> = {},
+): void {
+  if (life === currentLife) {
+    return;
+  }
+
+  set({ life, ...extraState });
+  writeSave(locale, life);
 }
 
 function isLocale(value: unknown): value is Locale {
   return value === 'zh-CN' || value === 'en-US';
+}
+
+function isSavedLife(value: unknown): value is LifeState | null {
+  if (value === null || value === undefined) {
+    return value === null;
+  }
+  if (typeof value !== 'object') {
+    return false;
+  }
+
+  const maybeLife = value as Partial<LifeState>;
+  return (
+    maybeLife.version === 1 &&
+    typeof maybeLife.character === 'object' &&
+    maybeLife.character !== null &&
+    typeof maybeLife.character.age === 'number' &&
+    typeof maybeLife.character.alive === 'boolean'
+  );
 }
