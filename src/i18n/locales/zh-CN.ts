@@ -55,6 +55,7 @@ export const zhCN = {
   'schoolStage.middle': '中学',
   'schoolStage.finished': '已毕业',
   'status.stable': '稳定',
+  'status.unknown': '未知',
   'status.injured': '受伤',
   'status.frail': '虚弱',
   'status.stressed': '压力大',

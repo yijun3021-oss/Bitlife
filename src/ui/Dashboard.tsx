@@ -11,6 +11,7 @@ interface DashboardProps {
 
 export function Dashboard({ life, onAgeUp, onChoose }: DashboardProps) {
   const { character, locale } = life;
+  const hasPendingEvent = life.currentEvent !== null;
 
   return (
     <div className="screen-stack">
@@ -20,7 +21,7 @@ export function Dashboard({ life, onAgeUp, onChoose }: DashboardProps) {
             <p className="eyebrow">{translate(locale, 'ui.tab.life')}</p>
             <h1>{character.name}</h1>
           </div>
-          <button className="age-button" type="button" onClick={onAgeUp}>
+          <button className="age-button" type="button" disabled={hasPendingEvent} onClick={onAgeUp}>
             {translate(locale, 'ui.action.ageUp')}
           </button>
         </div>

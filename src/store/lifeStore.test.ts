@@ -23,9 +23,26 @@ describe('life store', () => {
 
   it('ages up the current life', () => {
     useLifeStore.getState().createLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn' });
+    const currentLife = useLifeStore.getState().life;
+    if (currentLife === null) {
+      throw new Error('Expected a life to be created');
+    }
+    useLifeStore.setState({ life: { ...currentLife, currentEvent: null } });
+
     useLifeStore.getState().ageUpLife();
 
     expect(useLifeStore.getState().life?.character.age).toBe(1);
+  });
+
+  it('does not age up or save while a yearly event is unresolved', () => {
+    const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
+    useLifeStore.setState({ life, activeTab: 'activities' });
+
+    useLifeStore.getState().ageUpLife();
+
+    expect(useLifeStore.getState().life).toBe(life);
+    expect(useLifeStore.getState().activeTab).toBe('activities');
+    expect(localStorage.getItem(SAVE_KEY)).toBeNull();
   });
 
   it('loads a saved life and locale', () => {

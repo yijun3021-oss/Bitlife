@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { countries } from '../content/countries';
 import type { Gender, Locale } from '../game/types';
 import { translate } from '../i18n';
+import { LocaleSwitcher } from './LocaleSwitcher';
 
 interface CreateLifeProps {
   locale: Locale;
@@ -28,22 +29,7 @@ export function CreateLife({ locale, onCreate, onLocaleChange }: CreateLifeProps
             <p className="eyebrow">Bitliffe</p>
             <h1>{translate(locale, 'ui.heading.newLife')}</h1>
           </div>
-          <div className="segmented-control" aria-label={translate(locale, 'ui.label.language')}>
-            <button
-              aria-pressed={locale === 'zh-CN'}
-              type="button"
-              onClick={() => onLocaleChange('zh-CN')}
-            >
-              中文
-            </button>
-            <button
-              aria-pressed={locale === 'en-US'}
-              type="button"
-              onClick={() => onLocaleChange('en-US')}
-            >
-              English
-            </button>
-          </div>
+          <LocaleSwitcher locale={locale} onLocaleChange={onLocaleChange} />
         </div>
 
         <form

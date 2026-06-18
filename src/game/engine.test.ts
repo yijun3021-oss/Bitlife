@@ -13,6 +13,7 @@ import {
   clampAttribute,
   createNewLife,
   findJob,
+  getSchoolState,
   pickNextEvent,
 } from './engine';
 import { createSeededRandom, pickWeighted } from './random';
@@ -262,12 +263,34 @@ describe('life engine', () => {
       seed: 12,
     });
     const ageSix = Array.from({ length: 6 }).reduce<ReturnType<typeof createNewLife>>(
-      (state) => ageUp(state, 'school-seed'),
+      (state) => ageUp({ ...state, currentEvent: null }, 'school-seed'),
       life,
     );
 
     expect(ageSix.character.age).toBe(6);
     expect(ageSix.school.stage).toBe('elementary');
+  });
+
+  it('uses the required school stage boundaries', () => {
+    expect(getSchoolState(5)).toMatchObject({ stage: 'none', grade: 0 });
+    expect(getSchoolState(6)).toMatchObject({ stage: 'elementary', grade: 1 });
+    expect(getSchoolState(12)).toMatchObject({ stage: 'elementary', grade: 7 });
+    expect(getSchoolState(13)).toMatchObject({ stage: 'middle', grade: 1 });
+    expect(getSchoolState(17)).toMatchObject({ stage: 'middle', grade: 5 });
+    expect(getSchoolState(18)).toMatchObject({ stage: 'finished', grade: 0 });
+  });
+
+  it('does not overwrite an unresolved yearly event when aging up', () => {
+    const life = createNewLife({
+      name: 'Mina Lin',
+      gender: 'female',
+      countryId: 'cn',
+      locale: 'zh-CN',
+      seed: 12,
+    });
+
+    expect(life.currentEvent).not.toBeNull();
+    expect(ageUp(life, 'unresolved-event')).toBe(life);
   });
 
   it('raises death risk when health is low', () => {

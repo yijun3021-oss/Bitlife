@@ -52,11 +52,11 @@ export function getSchoolState(age: number, previous?: EducationStatus): Educati
   if (age < 6) {
     return { stage: 'none', grade: 0, stress: clampAttribute(stress - 5) };
   }
-  if (age < 12) {
+  if (age <= 12) {
     return { stage: 'elementary', grade: age - 5, stress };
   }
   if (age < 18) {
-    return { stage: 'middle', grade: age - 11, stress };
+    return { stage: 'middle', grade: age - 12, stress };
   }
   return { stage: 'finished', grade: 0, stress: clampAttribute(stress - 10) };
 }
@@ -159,7 +159,7 @@ export function calculateDeathRisk(age: number, health: number, statuses: string
 }
 
 export function ageUp(life: LifeState, seed: string | number = `${life.character.id}:age`): LifeState {
-  if (!life.character.alive) {
+  if (!life.character.alive || life.currentEvent !== null) {
     return life;
   }
 

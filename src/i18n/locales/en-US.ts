@@ -55,6 +55,7 @@ export const enUS = {
   'schoolStage.middle': 'Middle school',
   'schoolStage.finished': 'Finished',
   'status.stable': 'Stable',
+  'status.unknown': 'Unknown',
   'status.injured': 'Injured',
   'status.frail': 'Frail',
   'status.stressed': 'Stressed',

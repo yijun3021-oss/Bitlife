@@ -6,6 +6,7 @@ import { ActivityPanel } from './ui/ActivityPanel';
 import { CreateLife } from './ui/CreateLife';
 import { Dashboard } from './ui/Dashboard';
 import { DeathSummary } from './ui/DeathSummary';
+import { LocaleSwitcher } from './ui/LocaleSwitcher';
 import { RelationshipsPanel } from './ui/RelationshipsPanel';
 import { SchoolWorkPanel } from './ui/SchoolWorkPanel';
 import { Tabs } from './ui/Tabs';
@@ -34,7 +35,7 @@ export function App() {
   }
 
   if (!life.character.alive) {
-    return <DeathSummary life={life} onNewLife={clearLife} />;
+    return <DeathSummary life={life} onLocaleChange={setLocale} onNewLife={clearLife} />;
   }
 
   return (
@@ -45,7 +46,10 @@ export function App() {
       {activeTab === 'activities' && <ActivityPanel life={life} onRun={runActivity} />}
       {activeTab === 'profile' && (
         <section className="panel">
-          <p className="panel-title">{life.character.name}</p>
+          <div className="profile-header">
+            <p className="panel-title">{life.character.name}</p>
+            <LocaleSwitcher locale={locale} onLocaleChange={setLocale} />
+          </div>
           <dl className="detail-list">
             <div>
               <dt>{translate(locale, 'ui.label.country')}</dt>
@@ -74,5 +78,5 @@ function formatStatuses(statuses: string[], locale: Locale): string {
 function formatStatus(status: string, locale: Locale): string {
   const key = `status.${status}`;
   const label = translate(locale, key);
-  return label === key ? status : label;
+  return label === key ? translate(locale, 'status.unknown') : label;
 }

@@ -31,6 +31,11 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
@@ -111,14 +116,27 @@ h2 {
 }
 
 .create-header,
-.profile-topline {
+.profile-topline,
+.profile-header,
+.death-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
+.profile-header {
+  align-items: center;
+}
+
+.profile-header .panel-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .segmented-control {
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: 1fr 1fr;
   min-width: 112px;
@@ -193,6 +211,10 @@ select {
   color: #ffffff;
   background: #2f7d57;
   white-space: nowrap;
+}
+
+.age-button:disabled {
+  background: #6f877a;
 }
 
 .quick-stats,
