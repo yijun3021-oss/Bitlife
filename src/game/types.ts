@@ -1,10 +1,8 @@
 export type Locale = 'zh-CN' | 'en-US';
-export type LocaleCode = Locale;
 export type Gender = 'female' | 'male' | 'non_binary';
 export type LifeStage = 'infant' | 'child' | 'teen' | 'adult' | 'elder';
 export type RelationshipKind = 'mother' | 'father' | 'sibling';
-export type RelationshipType = RelationshipKind;
-export type SchoolStage = 'none' | 'elementary' | 'middle' | 'finished';
+type SchoolStage = 'none' | 'elementary' | 'middle' | 'finished';
 export type AttributeName = keyof Attributes;
 
 export interface Attributes {
@@ -14,9 +12,7 @@ export interface Attributes {
   looks: number;
 }
 
-export type AttributeState = Attributes;
-
-export interface Character {
+interface Character {
   id: string;
   name: string;
   gender: Gender;
@@ -41,16 +37,12 @@ export interface EducationStatus {
   stress: number;
 }
 
-export type SchoolState = EducationStatus;
-
 export interface Job {
   jobId: string;
   titleKey: string;
   salary: number;
   years: number;
 }
-
-export type JobState = Job;
 
 export type WorkStatus = Job | null;
 
@@ -61,7 +53,7 @@ export interface LifeLogEntry {
   values?: Record<string, string | number>;
 }
 
-export interface Effect {
+interface Effect {
   attributes?: Partial<Attributes>;
   money?: number;
   relationship?: {
@@ -82,8 +74,6 @@ export interface LifeEventOption extends LifeEventResult {
   textKey: string;
 }
 
-export type EventChoice = LifeEventOption;
-
 export interface LifeEvent {
   id: string;
   textKey: string;
@@ -98,7 +88,7 @@ export interface LifeEvent {
   choices: LifeEventOption[];
 }
 
-export interface DeathSummary {
+interface DeathSummary {
   age: number;
   causeKey: string;
   netWorth: number;
