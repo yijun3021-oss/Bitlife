@@ -39,3 +39,13 @@ node download_wiki_files.mjs --output-dir wiki_dump_test --limit 3
 ```
 
 The Python and PowerShell scripts are kept as alternative downloaders, but the Node scripts were the ones verified in this workspace.
+
+## P0 Game Prototype
+
+Run the mobile-first P0 prototype:
+
+`npm install`
+
+`npm run dev`
+
+Open the local URL shown by Vite. Use a mobile-width viewport around 390 x 844 for primary QA.
