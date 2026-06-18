@@ -183,13 +183,13 @@ function isSavedLife(value: unknown): value is LifeState | null {
     maybeLife.version === 1 &&
     isLocale(maybeLife.locale) &&
     isSavedCharacter(maybeLife.character) &&
-    Array.isArray(maybeLife.relationships) &&
+    isSavedRelationships(maybeLife.relationships) &&
     isSavedSchool(maybeLife.school) &&
     isSavedJob(maybeLife.job) &&
     Array.isArray(maybeLife.statuses) &&
-    (maybeLife.currentEvent === null || isPlainObject(maybeLife.currentEvent)) &&
-    Array.isArray(maybeLife.log) &&
-    (maybeLife.deathSummary === null || isPlainObject(maybeLife.deathSummary))
+    isSavedCurrentEvent(maybeLife.currentEvent) &&
+    isSavedLog(maybeLife.log) &&
+    isSavedDeathSummary(maybeLife.deathSummary)
   );
 }
 
@@ -232,9 +232,28 @@ function isSavedSchool(value: unknown): value is LifeState['school'] {
 
   const school = value as Partial<LifeState['school']>;
   return (
-    typeof school.stage === 'string' &&
+    isSchoolStage(school.stage) &&
     typeof school.grade === 'number' &&
     typeof school.stress === 'number'
+  );
+}
+
+function isSavedRelationships(value: unknown): value is LifeState['relationships'] {
+  return Array.isArray(value) && value.every(isSavedRelationship);
+}
+
+function isSavedRelationship(value: unknown): value is LifeState['relationships'][number] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  const relationship = value as Partial<LifeState['relationships'][number]>;
+  return (
+    typeof relationship.id === 'string' &&
+    typeof relationship.name === 'string' &&
+    isRelationshipKind(relationship.type) &&
+    typeof relationship.closeness === 'number' &&
+    typeof relationship.alive === 'boolean'
   );
 }
 
@@ -255,8 +274,86 @@ function isSavedJob(value: unknown): value is LifeState['job'] {
   );
 }
 
+function isSavedCurrentEvent(value: unknown): value is LifeState['currentEvent'] {
+  if (value === null) {
+    return true;
+  }
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  const event = value as Partial<NonNullable<LifeState['currentEvent']>>;
+  return (
+    typeof event.id === 'string' &&
+    typeof event.textKey === 'string' &&
+    typeof event.minAge === 'number' &&
+    typeof event.maxAge === 'number' &&
+    typeof event.weight === 'number' &&
+    Array.isArray(event.tags) &&
+    Array.isArray(event.choices) &&
+    event.choices.every(isSavedChoice)
+  );
+}
+
+function isSavedChoice(value: unknown): value is NonNullable<LifeState['currentEvent']>['choices'][number] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  const choice = value as Partial<NonNullable<LifeState['currentEvent']>['choices'][number]>;
+  return (
+    typeof choice.id === 'string' &&
+    typeof choice.textKey === 'string' &&
+    typeof choice.resultKey === 'string' &&
+    isPlainObject(choice.effects)
+  );
+}
+
+function isSavedLog(value: unknown): value is LifeState['log'] {
+  return Array.isArray(value) && value.every(isSavedLogEntry);
+}
+
+function isSavedLogEntry(value: unknown): value is LifeState['log'][number] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  const logEntry = value as Partial<LifeState['log'][number]>;
+  return (
+    typeof logEntry.id === 'string' &&
+    typeof logEntry.age === 'number' &&
+    typeof logEntry.textKey === 'string' &&
+    (logEntry.values === undefined || isPlainObject(logEntry.values))
+  );
+}
+
+function isSavedDeathSummary(value: unknown): value is LifeState['deathSummary'] {
+  if (value === null) {
+    return true;
+  }
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  const deathSummary = value as Partial<NonNullable<LifeState['deathSummary']>>;
+  return (
+    typeof deathSummary.age === 'number' &&
+    typeof deathSummary.causeKey === 'string' &&
+    typeof deathSummary.netWorth === 'number' &&
+    typeof deathSummary.logKey === 'string'
+  );
+}
+
+function isSchoolStage(value: unknown): value is LifeState['school']['stage'] {
+  return value === 'none' || value === 'elementary' || value === 'middle' || value === 'finished';
+}
+
 function isGender(value: unknown): value is Gender {
   return value === 'female' || value === 'male' || value === 'non_binary';
+}
+
+function isRelationshipKind(value: unknown): value is LifeState['relationships'][number]['type'] {
+  return value === 'mother' || value === 'father' || value === 'sibling';
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

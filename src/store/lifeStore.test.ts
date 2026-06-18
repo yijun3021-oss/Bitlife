@@ -97,6 +97,32 @@ describe('life store', () => {
     expect(useLifeStore.getState().life).toBeNull();
   });
 
+  it('ignores saved lives with malformed current events', () => {
+    const savedLife = {
+      ...createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'en-US', seed: 12 }),
+      currentEvent: {},
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ version: 1, locale: 'en-US', life: savedLife }));
+
+    useLifeStore.getState().loadLife();
+
+    expect(useLifeStore.getState().locale).toBe('zh-CN');
+    expect(useLifeStore.getState().life).toBeNull();
+  });
+
+  it('ignores saved lives with malformed relationships', () => {
+    const savedLife = {
+      ...createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'en-US', seed: 12 }),
+      relationships: [{}],
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ version: 1, locale: 'en-US', life: savedLife }));
+
+    useLifeStore.getState().loadLife();
+
+    expect(useLifeStore.getState().locale).toBe('zh-CN');
+    expect(useLifeStore.getState().life).toBeNull();
+  });
+
   it('persists locale and updates an existing life locale', () => {
     useLifeStore.getState().createLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn' });
 
