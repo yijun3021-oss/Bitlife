@@ -12,7 +12,7 @@ const TABS: ActiveTab[] = ['life', 'relationships', 'schoolWork', 'activities', 
 
 export function Tabs({ activeTab, locale, onTabChange }: TabsProps) {
   return (
-    <nav className="bottom-tabs" aria-label={locale === 'zh-CN' ? '主导航' : 'Main navigation'}>
+    <nav className="bottom-tabs" aria-label={translate(locale, 'ui.a11y.mainNavigation')}>
       {TABS.map((tab) => (
         <button
           aria-current={activeTab === tab ? 'page' : undefined}

@@ -9,10 +9,10 @@ interface CreateLifeProps {
   onLocaleChange(locale: Locale): void;
 }
 
-const GENDERS: Array<{ value: Gender; zh: string; en: string }> = [
-  { value: 'female', zh: '女', en: 'Female' },
-  { value: 'male', zh: '男', en: 'Male' },
-  { value: 'non_binary', zh: '非二元', en: 'Non-binary' },
+const GENDERS: Array<{ value: Gender; labelKey: string }> = [
+  { value: 'female', labelKey: 'gender.female' },
+  { value: 'male', labelKey: 'gender.male' },
+  { value: 'non_binary', labelKey: 'gender.nonBinary' },
 ];
 
 export function CreateLife({ locale, onCreate, onLocaleChange }: CreateLifeProps) {
@@ -26,9 +26,9 @@ export function CreateLife({ locale, onCreate, onLocaleChange }: CreateLifeProps
         <div className="create-header">
           <div>
             <p className="eyebrow">Bitliffe</p>
-            <h1>{locale === 'zh-CN' ? '新人生' : 'New life'}</h1>
+            <h1>{translate(locale, 'ui.heading.newLife')}</h1>
           </div>
-          <div className="segmented-control" aria-label={locale === 'zh-CN' ? '语言' : 'Language'}>
+          <div className="segmented-control" aria-label={translate(locale, 'ui.label.language')}>
             <button
               aria-pressed={locale === 'zh-CN'}
               type="button"
@@ -41,7 +41,7 @@ export function CreateLife({ locale, onCreate, onLocaleChange }: CreateLifeProps
               type="button"
               onClick={() => onLocaleChange('en-US')}
             >
-              EN
+              English
             </button>
           </div>
         </div>
@@ -58,7 +58,7 @@ export function CreateLife({ locale, onCreate, onLocaleChange }: CreateLifeProps
           }}
         >
           <label className="field-label">
-            <span>{locale === 'zh-CN' ? '姓名' : 'Name'}</span>
+            <span>{translate(locale, 'ui.label.name')}</span>
             <input
               autoComplete="name"
               value={name}
@@ -67,18 +67,18 @@ export function CreateLife({ locale, onCreate, onLocaleChange }: CreateLifeProps
           </label>
 
           <label className="field-label">
-            <span>{locale === 'zh-CN' ? '性别' : 'Gender'}</span>
+            <span>{translate(locale, 'ui.label.gender')}</span>
             <select value={gender} onChange={(event) => setGender(event.target.value as Gender)}>
               {GENDERS.map((item) => (
                 <option key={item.value} value={item.value}>
-                  {locale === 'zh-CN' ? item.zh : item.en}
+                  {translate(locale, item.labelKey)}
                 </option>
               ))}
             </select>
           </label>
 
           <label className="field-label">
-            <span>{locale === 'zh-CN' ? '国家' : 'Country'}</span>
+            <span>{translate(locale, 'ui.label.country')}</span>
             <select value={countryId} onChange={(event) => setCountryId(event.target.value)}>
               {countries.map((country) => (
                 <option key={country.id} value={country.id}>

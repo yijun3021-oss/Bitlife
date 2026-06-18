@@ -14,15 +14,15 @@ export function SchoolWorkPanel({ life }: SchoolWorkPanelProps) {
         <p className="panel-title">{translate(locale, 'ui.label.school')}</p>
         <dl className="detail-list">
           <div>
-            <dt>{locale === 'zh-CN' ? '阶段' : 'Stage'}</dt>
+            <dt>{translate(locale, 'ui.label.stage')}</dt>
             <dd>{schoolStageLabel(school.stage, locale)}</dd>
           </div>
           <div>
-            <dt>{locale === 'zh-CN' ? '年级' : 'Grade'}</dt>
+            <dt>{translate(locale, 'ui.label.grade')}</dt>
             <dd>{school.grade || '-'}</dd>
           </div>
           <div>
-            <dt>{locale === 'zh-CN' ? '压力' : 'Stress'}</dt>
+            <dt>{translate(locale, 'ui.label.stress')}</dt>
             <dd>{school.stress}</dd>
           </div>
         </dl>
@@ -31,15 +31,15 @@ export function SchoolWorkPanel({ life }: SchoolWorkPanelProps) {
       <section className="panel">
         <p className="panel-title">{translate(locale, 'ui.label.work')}</p>
         {job === null ? (
-          <p className="empty-text">{locale === 'zh-CN' ? '暂无工作' : 'No job yet'}</p>
+          <p className="empty-text">{translate(locale, 'ui.empty.noJob')}</p>
         ) : (
           <dl className="detail-list">
             <div>
-              <dt>{locale === 'zh-CN' ? '职位' : 'Role'}</dt>
+              <dt>{translate(locale, 'ui.label.role')}</dt>
               <dd>{translate(locale, job.titleKey)}</dd>
             </div>
             <div>
-              <dt>{locale === 'zh-CN' ? '薪水' : 'Salary'}</dt>
+              <dt>{translate(locale, 'ui.label.salary')}</dt>
               <dd>{formatMoney(job.salary)}</dd>
             </div>
           </dl>
@@ -50,13 +50,7 @@ export function SchoolWorkPanel({ life }: SchoolWorkPanelProps) {
 }
 
 function schoolStageLabel(stage: LifeState['school']['stage'], locale: LifeState['locale']): string {
-  const labels = {
-    none: locale === 'zh-CN' ? '未入学' : 'None',
-    elementary: locale === 'zh-CN' ? '小学' : 'Elementary',
-    middle: locale === 'zh-CN' ? '中学' : 'Middle school',
-    finished: locale === 'zh-CN' ? '已毕业' : 'Finished',
-  };
-  return labels[stage];
+  return translate(locale, `schoolStage.${stage}`);
 }
 
 function formatMoney(value: number): string {

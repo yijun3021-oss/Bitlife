@@ -10,7 +10,7 @@ const STAT_KEYS: Array<keyof Attributes> = ['happiness', 'health', 'smarts', 'lo
 
 export function StatusBars({ attributes, locale }: StatusBarsProps) {
   return (
-    <div className="status-bars" role="group" aria-label={locale === 'zh-CN' ? '状态' : 'Stats'}>
+    <div className="status-bars" role="group" aria-label={translate(locale, 'ui.a11y.stats')}>
       {STAT_KEYS.map((key) => {
         const value = Math.max(0, Math.min(100, attributes[key]));
 

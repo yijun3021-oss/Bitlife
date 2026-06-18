@@ -21,11 +21,11 @@ export function DeathSummary({ life, onNewLife }: DeathSummaryProps) {
               <dd>{deathSummary.age}</dd>
             </div>
             <div>
-              <dt>{locale === 'zh-CN' ? '死因' : 'Cause'}</dt>
+              <dt>{translate(locale, 'ui.label.cause')}</dt>
               <dd>{translate(locale, deathSummary.causeKey)}</dd>
             </div>
             <div>
-              <dt>{locale === 'zh-CN' ? '净资产' : 'Net worth'}</dt>
+              <dt>{translate(locale, 'ui.label.netWorth')}</dt>
               <dd>{formatMoney(deathSummary.netWorth)}</dd>
             </div>
           </dl>

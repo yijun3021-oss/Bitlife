@@ -12,7 +12,7 @@ export function EventCard({ event, locale, onChoose }: EventCardProps) {
     return (
       <section className="panel event-panel muted-panel">
         <p className="panel-title">{translate(locale, 'ui.label.currentEvent')}</p>
-        <p>{locale === 'zh-CN' ? '今年没有待处理事件。长大一岁看看接下来会发生什么。' : 'No event is waiting. Age up to see what happens next.'}</p>
+        <p>{translate(locale, 'ui.empty.noEvent')}</p>
       </section>
     );
   }

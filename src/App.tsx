@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import type { Locale } from './game/types';
 import { translate } from './i18n';
 import { useLifeStore, type ActiveTab } from './store/lifeStore';
 import { ActivityPanel } from './ui/ActivityPanel';
@@ -51,8 +52,8 @@ export function App() {
               <dd>{translate(locale, `country.${life.character.countryId}`)}</dd>
             </div>
             <div>
-              <dt>{locale === 'zh-CN' ? '状态' : 'Status'}</dt>
-              <dd>{life.statuses.length === 0 ? (locale === 'zh-CN' ? '稳定' : 'Stable') : life.statuses.join(', ')}</dd>
+              <dt>{translate(locale, 'ui.label.status')}</dt>
+              <dd>{formatStatuses(life.statuses, locale)}</dd>
             </div>
           </dl>
         </section>
@@ -60,4 +61,18 @@ export function App() {
       <Tabs activeTab={activeTab} locale={locale} onTabChange={(tab: ActiveTab) => setActiveTab(tab)} />
     </main>
   );
+}
+
+function formatStatuses(statuses: string[], locale: Locale): string {
+  if (statuses.length === 0) {
+    return translate(locale, 'status.stable');
+  }
+
+  return statuses.map((status) => formatStatus(status, locale)).join(', ');
+}
+
+function formatStatus(status: string, locale: Locale): string {
+  const key = `status.${status}`;
+  const label = translate(locale, key);
+  return label === key ? status : label;
 }

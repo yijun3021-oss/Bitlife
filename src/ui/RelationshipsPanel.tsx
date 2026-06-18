@@ -25,10 +25,5 @@ export function RelationshipsPanel({ life }: RelationshipsPanelProps) {
 }
 
 function relationshipLabel(type: LifeState['relationships'][number]['type'], locale: LifeState['locale']): string {
-  const labels = {
-    mother: locale === 'zh-CN' ? '母亲' : 'Mother',
-    father: locale === 'zh-CN' ? '父亲' : 'Father',
-    sibling: locale === 'zh-CN' ? '手足' : 'Sibling',
-  };
-  return labels[type];
+  return translate(locale, `relationship.${type}`);
 }
