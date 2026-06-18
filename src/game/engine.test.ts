@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { events } from '../content/events';
+import { jobs } from '../content/jobs';
 import { clampAttribute } from './engine';
 import { createSeededRandom, pickWeighted } from './random';
 import type {
@@ -76,5 +78,22 @@ describe('game primitives', () => {
     expect(pickWeighted(items, { next: () => 0.05 })).toBe('a');
     expect(pickWeighted(items, { next: () => 0.2 })).toBe('b');
     expect(pickWeighted(items, { next: () => 0.95 })).toBe('c');
+  });
+});
+
+describe('seed content', () => {
+  it('ships enough original P0 events for the first playable loop', () => {
+    expect(events.length).toBeGreaterThanOrEqual(24);
+    expect(events.every((event) => event.choices.length >= 1)).toBe(true);
+  });
+
+  it('ships ordinary jobs for adult gameplay', () => {
+    expect(jobs.map((job) => job.id)).toEqual([
+      'cashier',
+      'office_assistant',
+      'cook',
+      'driver',
+      'support_agent',
+    ]);
   });
 });
