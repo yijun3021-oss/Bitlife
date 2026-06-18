@@ -123,6 +123,36 @@ describe('life store', () => {
     expect(useLifeStore.getState().life).toBeNull();
   });
 
+  it('ignores saved lives with null choice attributes effects', () => {
+    const savedLife = lifeWithChoiceEffects({ attributes: null });
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ version: 1, locale: 'en-US', life: savedLife }));
+
+    useLifeStore.getState().loadLife();
+
+    expect(useLifeStore.getState().locale).toBe('zh-CN');
+    expect(useLifeStore.getState().life).toBeNull();
+  });
+
+  it('ignores saved lives with malformed choice attribute values', () => {
+    const savedLife = lifeWithChoiceEffects({ attributes: { happiness: 'bad' } });
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ version: 1, locale: 'en-US', life: savedLife }));
+
+    useLifeStore.getState().loadLife();
+
+    expect(useLifeStore.getState().locale).toBe('zh-CN');
+    expect(useLifeStore.getState().life).toBeNull();
+  });
+
+  it('ignores saved lives with null choice relationship effects', () => {
+    const savedLife = lifeWithChoiceEffects({ relationship: null });
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ version: 1, locale: 'en-US', life: savedLife }));
+
+    useLifeStore.getState().loadLife();
+
+    expect(useLifeStore.getState().locale).toBe('zh-CN');
+    expect(useLifeStore.getState().life).toBeNull();
+  });
+
   it('persists locale and updates an existing life locale', () => {
     useLifeStore.getState().createLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn' });
 
@@ -231,4 +261,25 @@ function ageUpTo(life: LifeState, targetAge: number): LifeState {
     (state, _, index) => ageUp({ ...state, currentEvent: null }, `store-age-${index}`),
     life,
   );
+}
+
+function lifeWithChoiceEffects(effects: unknown): LifeState {
+  const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'en-US', seed: 12 });
+  const currentEvent = life.currentEvent;
+  if (currentEvent === null) {
+    throw new Error('Expected seed to create a current event');
+  }
+
+  return {
+    ...life,
+    currentEvent: {
+      ...currentEvent,
+      choices: [
+        {
+          ...currentEvent.choices[0],
+          effects,
+        },
+      ],
+    },
+  } as LifeState;
 }

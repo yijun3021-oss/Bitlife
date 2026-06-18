@@ -305,8 +305,50 @@ function isSavedChoice(value: unknown): value is NonNullable<LifeState['currentE
     typeof choice.id === 'string' &&
     typeof choice.textKey === 'string' &&
     typeof choice.resultKey === 'string' &&
-    isPlainObject(choice.effects)
+    isSavedEffects(choice.effects)
   );
+}
+
+function isSavedEffects(value: unknown): value is NonNullable<LifeState['currentEvent']>['choices'][number]['effects'] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  const effects = value;
+  return (
+    isOptionalAttributesEffect(effects.attributes) &&
+    (effects.money === undefined || typeof effects.money === 'number') &&
+    isOptionalRelationshipEffect(effects.relationship) &&
+    (effects.addStatus === undefined || typeof effects.addStatus === 'string') &&
+    (effects.removeStatus === undefined || typeof effects.removeStatus === 'string')
+  );
+}
+
+function isOptionalAttributesEffect(value: unknown): boolean {
+  if (value === undefined) {
+    return true;
+  }
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  return (
+    (value.happiness === undefined || typeof value.happiness === 'number') &&
+    (value.health === undefined || typeof value.health === 'number') &&
+    (value.smarts === undefined || typeof value.smarts === 'number') &&
+    (value.looks === undefined || typeof value.looks === 'number')
+  );
+}
+
+function isOptionalRelationshipEffect(value: unknown): boolean {
+  if (value === undefined) {
+    return true;
+  }
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  return isRelationshipKind(value.type) && typeof value.closeness === 'number';
 }
 
 function isSavedLog(value: unknown): value is LifeState['log'] {
