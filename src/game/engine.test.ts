@@ -5,7 +5,7 @@ import { events } from '../content/events';
 import { jobs } from '../content/jobs';
 import { enUS } from '../i18n/locales/en-US';
 import { zhCN } from '../i18n/locales/zh-CN';
-import { clampAttribute } from './engine';
+import { ageUp, applyChoice, calculateDeathRisk, clampAttribute, createNewLife } from './engine';
 import { createSeededRandom, pickWeighted } from './random';
 import type {
   AttributeName,
@@ -162,5 +162,61 @@ describe('seed content', () => {
 
     expect(localeKeys.every((key) => key in zhKeys)).toBe(true);
     expect(localeKeys.every((key) => key in enKeys)).toBe(true);
+  });
+});
+
+describe('life engine', () => {
+  it('creates a new life with family, school, log, and current event', () => {
+    const life = createNewLife({
+      name: 'Mina Lin',
+      gender: 'female',
+      countryId: 'cn',
+      locale: 'zh-CN',
+      seed: 12,
+    });
+
+    expect(life.character.age).toBe(0);
+    expect(life.character.alive).toBe(true);
+    expect(life.relationships.map((person) => person.type)).toContain('mother');
+    expect(life.relationships.map((person) => person.type)).toContain('father');
+    expect(life.currentEvent).not.toBeNull();
+    expect(life.log[0].textKey).toBe('log.birth');
+  });
+
+  it('applies choice effects and records the result', () => {
+    const life = createNewLife({
+      name: 'Mina Lin',
+      gender: 'female',
+      countryId: 'cn',
+      locale: 'zh-CN',
+      seed: 12,
+    });
+    const choice = life.currentEvent?.choices[0];
+    expect(choice).toBeDefined();
+
+    const next = applyChoice(life, choice!.id);
+    expect(next.log[0].textKey).toBe(choice!.resultKey);
+  });
+
+  it('ages up, pays salary, and updates school stage', () => {
+    const life = createNewLife({
+      name: 'Mina Lin',
+      gender: 'female',
+      countryId: 'cn',
+      locale: 'zh-CN',
+      seed: 12,
+    });
+    const ageSix = Array.from({ length: 6 }).reduce<ReturnType<typeof createNewLife>>(
+      (state) => ageUp(state, 'school-seed'),
+      life,
+    );
+
+    expect(ageSix.character.age).toBe(6);
+    expect(ageSix.school.stage).toBe('elementary');
+  });
+
+  it('raises death risk when health is low', () => {
+    expect(calculateDeathRisk(30, 80, [])).toBeLessThan(calculateDeathRisk(30, 10, []));
+    expect(calculateDeathRisk(82, 80, [])).toBeGreaterThan(calculateDeathRisk(30, 80, []));
   });
 });
