@@ -339,7 +339,7 @@ export const events: LifeEvent[] = [
     id: 'school_science_board',
     textKey: 'event.school.scienceBoard.text',
     minAge: 8,
-    maxAge: 14,
+    maxAge: 11,
     weight: 1,
     tags: ['school'],
     requires: { schoolStage: 'elementary' },

@@ -169,7 +169,7 @@ describe('seed content', () => {
   ];
 
   it('ships enough original P0 events for the first playable loop', () => {
-    expect(events.length).toBeGreaterThanOrEqual(65);
+    expect(events.length).toBeGreaterThanOrEqual(requiredEventIds.length);
     expect(events.every((event) => event.choices.length >= 1)).toBe(true);
 
     const tags = new Set(events.flatMap((event) => event.tags));
@@ -185,8 +185,11 @@ describe('seed content', () => {
     expect(eventIds).toEqual(expect.arrayContaining(requiredEventIds));
   });
 
-  it('requires a job for work bonus events', () => {
-    expect(events.find((event) => event.id === 'money_small_bonus')?.requires).toEqual({ hasJob: true });
+  it('requires a job for every work-tagged event', () => {
+    const workEvents = events.filter((event) => event.tags.includes('work'));
+
+    expect(workEvents.length).toBeGreaterThan(0);
+    expect(workEvents.every((event) => event.requires?.hasJob === true)).toBe(true);
   });
 
   it('ships ordinary jobs for adult gameplay', () => {
