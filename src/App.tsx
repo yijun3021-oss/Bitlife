@@ -1,13 +1,13 @@
 import { useEffect } from 'react';
 import { translate } from './i18n';
-import { useLifeStore } from './store/lifeStore';
+import { useLifeStore, type ActiveTab } from './store/lifeStore';
 import { ActivityPanel } from './ui/ActivityPanel';
 import { CreateLife } from './ui/CreateLife';
 import { Dashboard } from './ui/Dashboard';
 import { DeathSummary } from './ui/DeathSummary';
 import { RelationshipsPanel } from './ui/RelationshipsPanel';
 import { SchoolWorkPanel } from './ui/SchoolWorkPanel';
-import { Tabs, type AppTab } from './ui/Tabs';
+import { Tabs } from './ui/Tabs';
 
 export function App() {
   const {
@@ -57,7 +57,7 @@ export function App() {
           </dl>
         </section>
       )}
-      <Tabs activeTab={activeTab} locale={locale} onTabChange={(tab: AppTab) => setActiveTab(tab)} />
+      <Tabs activeTab={activeTab} locale={locale} onTabChange={(tab: ActiveTab) => setActiveTab(tab)} />
     </main>
   );
 }

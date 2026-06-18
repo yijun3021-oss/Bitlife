@@ -5,7 +5,7 @@ import type { Gender, LifeState, Locale } from '../game/types';
 
 export const SAVE_KEY = 'bitliffe.save.v1';
 
-type ActiveTab = 'life' | 'relationships' | 'schoolWork' | 'activities' | 'profile';
+export type ActiveTab = 'life' | 'relationships' | 'schoolWork' | 'activities' | 'profile';
 
 interface SaveRecord {
   version: 1;

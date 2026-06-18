@@ -1,15 +1,14 @@
 import type { Locale } from '../game/types';
 import { translate } from '../i18n';
-
-export type AppTab = 'life' | 'relationships' | 'schoolWork' | 'activities' | 'profile';
+import type { ActiveTab } from '../store/lifeStore';
 
 interface TabsProps {
-  activeTab: AppTab;
+  activeTab: ActiveTab;
   locale: Locale;
-  onTabChange(tab: AppTab): void;
+  onTabChange(tab: ActiveTab): void;
 }
 
-const TABS: AppTab[] = ['life', 'relationships', 'schoolWork', 'activities', 'profile'];
+const TABS: ActiveTab[] = ['life', 'relationships', 'schoolWork', 'activities', 'profile'];
 
 export function Tabs({ activeTab, locale, onTabChange }: TabsProps) {
   return (
