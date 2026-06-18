@@ -69,6 +69,34 @@ describe('life store', () => {
     expect(useLifeStore.getState().life).toBeNull();
   });
 
+  it('ignores saved lives missing core fields', () => {
+    localStorage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 1,
+        locale: 'en-US',
+        life: {
+          version: 1,
+          locale: 'en-US',
+          character: {
+            id: 'life_incomplete',
+            name: 'Mina Lin',
+            gender: 'female',
+            countryId: 'cn',
+            age: 0,
+            alive: true,
+            money: 0,
+          },
+        },
+      }),
+    );
+
+    useLifeStore.getState().loadLife();
+
+    expect(useLifeStore.getState().locale).toBe('zh-CN');
+    expect(useLifeStore.getState().life).toBeNull();
+  });
+
   it('persists locale and updates an existing life locale', () => {
     useLifeStore.getState().createLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn' });
 
@@ -153,10 +181,11 @@ describe('life store', () => {
   });
 
   it('does not age up, retab, or save an already dead life', () => {
+    const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
     const deadLife: LifeState = {
-      ...createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }),
+      ...life,
       character: {
-        ...createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }).character,
+        ...life.character,
         alive: false,
       },
       currentEvent: null,

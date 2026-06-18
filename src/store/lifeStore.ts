@@ -74,7 +74,7 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
 
   ageUpLife: () => {
     const currentLife = get().life;
-    if (currentLife === null || !currentLife.character.alive) {
+    if (currentLife === null) {
       return;
     }
     const life = ageUp(currentLife, Date.now() % 100000);
@@ -181,9 +181,84 @@ function isSavedLife(value: unknown): value is LifeState | null {
   const maybeLife = value as Partial<LifeState>;
   return (
     maybeLife.version === 1 &&
-    typeof maybeLife.character === 'object' &&
-    maybeLife.character !== null &&
-    typeof maybeLife.character.age === 'number' &&
-    typeof maybeLife.character.alive === 'boolean'
+    isLocale(maybeLife.locale) &&
+    isSavedCharacter(maybeLife.character) &&
+    Array.isArray(maybeLife.relationships) &&
+    isSavedSchool(maybeLife.school) &&
+    isSavedJob(maybeLife.job) &&
+    Array.isArray(maybeLife.statuses) &&
+    (maybeLife.currentEvent === null || isPlainObject(maybeLife.currentEvent)) &&
+    Array.isArray(maybeLife.log) &&
+    (maybeLife.deathSummary === null || isPlainObject(maybeLife.deathSummary))
   );
+}
+
+function isSavedCharacter(value: unknown): value is LifeState['character'] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  const character = value as Partial<LifeState['character']>;
+  return (
+    typeof character.id === 'string' &&
+    typeof character.name === 'string' &&
+    isGender(character.gender) &&
+    typeof character.countryId === 'string' &&
+    typeof character.age === 'number' &&
+    typeof character.alive === 'boolean' &&
+    typeof character.money === 'number' &&
+    isSavedAttributes(character.attributes)
+  );
+}
+
+function isSavedAttributes(value: unknown): value is LifeState['character']['attributes'] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  const attributes = value as Partial<LifeState['character']['attributes']>;
+  return (
+    typeof attributes.happiness === 'number' &&
+    typeof attributes.health === 'number' &&
+    typeof attributes.smarts === 'number' &&
+    typeof attributes.looks === 'number'
+  );
+}
+
+function isSavedSchool(value: unknown): value is LifeState['school'] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  const school = value as Partial<LifeState['school']>;
+  return (
+    typeof school.stage === 'string' &&
+    typeof school.grade === 'number' &&
+    typeof school.stress === 'number'
+  );
+}
+
+function isSavedJob(value: unknown): value is LifeState['job'] {
+  if (value === null) {
+    return true;
+  }
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  const job = value;
+  return (
+    typeof job.jobId === 'string' &&
+    typeof job.titleKey === 'string' &&
+    typeof job.salary === 'number' &&
+    typeof job.years === 'number'
+  );
+}
+
+function isGender(value: unknown): value is Gender {
+  return value === 'female' || value === 'male' || value === 'non_binary';
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
