@@ -5,7 +5,16 @@ import { events } from '../content/events';
 import { jobs } from '../content/jobs';
 import { enUS } from '../i18n/locales/en-US';
 import { zhCN } from '../i18n/locales/zh-CN';
-import { ageUp, applyChoice, calculateDeathRisk, clampAttribute, createNewLife } from './engine';
+import {
+  ageUp,
+  applyActivity,
+  applyChoice,
+  calculateDeathRisk,
+  clampAttribute,
+  createNewLife,
+  findJob,
+  pickNextEvent,
+} from './engine';
 import { createSeededRandom, pickWeighted } from './random';
 import type {
   AttributeName,
@@ -219,4 +228,95 @@ describe('life engine', () => {
     expect(calculateDeathRisk(30, 80, [])).toBeLessThan(calculateDeathRisk(30, 10, []));
     expect(calculateDeathRisk(82, 80, [])).toBeGreaterThan(calculateDeathRisk(30, 80, []));
   });
+
+  it('finds cashier for low smarts and the best qualified job for high smarts', () => {
+    const adult = ageUpTo(
+      createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }),
+      18,
+    );
+    const lowSmarts = {
+      ...adult,
+      character: {
+        ...adult.character,
+        attributes: { ...adult.character.attributes, smarts: 5 },
+      },
+    };
+    const highSmarts = {
+      ...adult,
+      character: {
+        ...adult.character,
+        attributes: { ...adult.character.attributes, smarts: 95 },
+      },
+    };
+
+    expect(findJob(lowSmarts).job?.jobId).toBe('cashier');
+    expect(findJob(highSmarts).job?.jobId).toBe('support_agent');
+  });
+
+  it('only allows job-required events after the life has a job', () => {
+    const adult = ageUpTo(
+      createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }),
+      30,
+    );
+    const withoutJobEvents = Array.from({ length: 20 }, (_, index) => pickNextEvent(adult, `work-${index}`));
+    const employed = findJob(adult);
+    const withJobEvents = Array.from({ length: 40 }, (_, index) => pickNextEvent(employed, `work-${index}`));
+
+    expect(withoutJobEvents.some((event) => event?.requires?.hasJob === true)).toBe(false);
+    expect(withJobEvents.some((event) => event?.requires?.hasJob === true)).toBe(true);
+  });
+
+  it('applies activity effects immutably and clamps attributes', () => {
+    const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
+    const next = applyActivity(life, {
+      attributes: { happiness: 40, health: -100 },
+      relationship: { type: 'mother', closeness: 40 },
+      money: 25,
+      addStatus: 'rested',
+    });
+
+    expect(next.character.attributes.happiness).toBe(100);
+    expect(next.character.attributes.health).toBe(0);
+    expect(next.relationships.find((person) => person.type === 'mother')?.closeness).toBe(100);
+    expect(next.character.money).toBe(25);
+    expect(next.statuses).toContain('rested');
+    expect(life.character.attributes.happiness).toBe(70);
+    expect(life.character.attributes.health).toBe(75);
+    expect(life.character.money).toBe(0);
+    expect(life.statuses).toEqual([]);
+  });
+
+  it('records death log and an existing death cause key for deterministic high-risk death', () => {
+    const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
+    const highRisk: LifeState = {
+      ...life,
+      character: {
+        ...life.character,
+        age: 95,
+        attributes: { ...life.character.attributes, health: 0 },
+        money: 1200,
+      },
+      school: { stage: 'finished', grade: 0, stress: 0 },
+      statuses: ['frail'],
+      currentEvent: null,
+    };
+
+    const next = ageUp(highRisk, 'death-seed');
+
+    expect(next.character.alive).toBe(false);
+    expect(next.log[0].textKey).toBe('log.death');
+    expect(next.deathSummary).toEqual({
+      age: 96,
+      causeKey: 'death.poorHealth',
+      netWorth: 1200,
+      logKey: 'log.death',
+    });
+  });
 });
+
+function ageUpTo(life: ReturnType<typeof createNewLife>, targetAge: number): ReturnType<typeof createNewLife> {
+  return Array.from({ length: targetAge }).reduce<ReturnType<typeof createNewLife>>(
+    (state, _, index) => ageUp({ ...state, currentEvent: null }, `age-${index}`),
+    life,
+  );
+}

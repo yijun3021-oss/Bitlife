@@ -24,7 +24,7 @@ interface NewLifeInput {
   seed: string | number;
 }
 
-type Effect = LifeEventOption['effects'];
+type ChoiceEffects = LifeEventOption['effects'];
 
 export function clampAttribute(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -198,7 +198,9 @@ export function findJob(life: LifeState): LifeState {
     return life;
   }
 
-  const selected = jobs.find((job) => life.character.attributes.smarts >= job.smartsMin) ?? jobs[0];
+  const selected = jobs
+    .filter((job) => life.character.attributes.smarts >= job.smartsMin)
+    .reduce((best, job) => (job.smartsMin > best.smartsMin ? job : best), jobs[0]);
   return {
     ...life,
     job: {
@@ -210,7 +212,7 @@ export function findJob(life: LifeState): LifeState {
   };
 }
 
-export function applyActivity(life: LifeState, activityEffect: Effect): LifeState {
+export function applyActivity(life: LifeState, activityEffect: ChoiceEffects): LifeState {
   if (!life.character.alive) {
     return life;
   }
@@ -230,7 +232,7 @@ function eventMatchesLife(event: LifeEvent, life: LifeState): boolean {
   return true;
 }
 
-function applyEffect(life: LifeState, effect: Effect): LifeState {
+function applyEffect(life: LifeState, effect: ChoiceEffects): LifeState {
   const attributes = applyAttributeEffect(life.character.attributes, effect.attributes);
   const relationships = effect.relationship === undefined
     ? life.relationships
@@ -298,12 +300,22 @@ function maybeDie(life: LifeState, random: RandomSource): LifeState {
     currentEvent: null,
     deathSummary: {
       age: life.character.age,
-      causeKey: 'death.natural',
+      causeKey: getDeathCauseKey(life),
       netWorth: life.character.money,
       logKey: 'log.death',
     },
     log: [deathLog, ...life.log],
   };
+}
+
+function getDeathCauseKey(life: LifeState): 'death.oldAge' | 'death.poorHealth' | 'death.accident' {
+  if (life.character.attributes.health <= 25) {
+    return 'death.poorHealth';
+  }
+  if (life.character.age >= 85) {
+    return 'death.oldAge';
+  }
+  return 'death.accident';
 }
 
 function createFamily(characterName: string, random: RandomSource): Relationship[] {
