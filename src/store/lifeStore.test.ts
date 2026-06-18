@@ -153,6 +153,59 @@ describe('life store', () => {
     expect(useLifeStore.getState().life).toBeNull();
   });
 
+  it('ignores saved lives with non-string statuses', () => {
+    const savedLife = {
+      ...createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'en-US', seed: 12 }),
+      statuses: ['rested', 12],
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ version: 1, locale: 'en-US', life: savedLife }));
+
+    useLifeStore.getState().loadLife();
+
+    expect(useLifeStore.getState().locale).toBe('zh-CN');
+    expect(useLifeStore.getState().life).toBeNull();
+  });
+
+  it('ignores saved lives with non-string event tags', () => {
+    const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'en-US', seed: 12 });
+    const currentEvent = life.currentEvent;
+    if (currentEvent === null) {
+      throw new Error('Expected seed to create a current event');
+    }
+    const savedLife = {
+      ...life,
+      currentEvent: {
+        ...currentEvent,
+        tags: ['birth', 12],
+      },
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ version: 1, locale: 'en-US', life: savedLife }));
+
+    useLifeStore.getState().loadLife();
+
+    expect(useLifeStore.getState().locale).toBe('zh-CN');
+    expect(useLifeStore.getState().life).toBeNull();
+  });
+
+  it('ignores saved lives with non-string-or-number log values', () => {
+    const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'en-US', seed: 12 });
+    const savedLife = {
+      ...life,
+      log: [
+        {
+          ...life.log[0],
+          values: { name: { nested: 'bad' } },
+        },
+      ],
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ version: 1, locale: 'en-US', life: savedLife }));
+
+    useLifeStore.getState().loadLife();
+
+    expect(useLifeStore.getState().locale).toBe('zh-CN');
+    expect(useLifeStore.getState().life).toBeNull();
+  });
+
   it('persists locale and updates an existing life locale', () => {
     useLifeStore.getState().createLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn' });
 

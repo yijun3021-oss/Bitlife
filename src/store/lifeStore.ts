@@ -186,7 +186,7 @@ function isSavedLife(value: unknown): value is LifeState | null {
     isSavedRelationships(maybeLife.relationships) &&
     isSavedSchool(maybeLife.school) &&
     isSavedJob(maybeLife.job) &&
-    Array.isArray(maybeLife.statuses) &&
+    isStringArray(maybeLife.statuses) &&
     isSavedCurrentEvent(maybeLife.currentEvent) &&
     isSavedLog(maybeLife.log) &&
     isSavedDeathSummary(maybeLife.deathSummary)
@@ -289,7 +289,7 @@ function isSavedCurrentEvent(value: unknown): value is LifeState['currentEvent']
     typeof event.minAge === 'number' &&
     typeof event.maxAge === 'number' &&
     typeof event.weight === 'number' &&
-    Array.isArray(event.tags) &&
+    isStringArray(event.tags) &&
     Array.isArray(event.choices) &&
     event.choices.every(isSavedChoice)
   );
@@ -365,7 +365,7 @@ function isSavedLogEntry(value: unknown): value is LifeState['log'][number] {
     typeof logEntry.id === 'string' &&
     typeof logEntry.age === 'number' &&
     typeof logEntry.textKey === 'string' &&
-    (logEntry.values === undefined || isPlainObject(logEntry.values))
+    (logEntry.values === undefined || isSavedLogValues(logEntry.values))
   );
 }
 
@@ -396,6 +396,18 @@ function isGender(value: unknown): value is Gender {
 
 function isRelationshipKind(value: unknown): value is LifeState['relationships'][number]['type'] {
   return value === 'mother' || value === 'father' || value === 'sibling';
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function isSavedLogValues(value: unknown): value is NonNullable<LifeState['log'][number]['values']> {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  return Object.values(value).every((item) => typeof item === 'string' || typeof item === 'number');
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
