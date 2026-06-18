@@ -358,7 +358,7 @@ dd {
   padding: 0 4px;
   color: #65706b;
   background: transparent;
-  font-size: 11px;
+  font-size: 12px;
   overflow-wrap: anywhere;
 }
 
@@ -405,5 +405,12 @@ dd {
 
   .bottom-tabs button {
     font-size: 11px;
+  }
+}
+
+@media (max-width: 340px) {
+  .game-shell {
+    padding-right: 8px;
+    padding-left: 8px;
   }
 }
