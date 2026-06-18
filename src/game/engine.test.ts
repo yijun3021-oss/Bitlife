@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { activities } from '../content/activities';
+import { countries } from '../content/countries';
 import { events } from '../content/events';
 import { jobs } from '../content/jobs';
+import { enUS } from '../i18n/locales/en-US';
+import { zhCN } from '../i18n/locales/zh-CN';
 import { clampAttribute } from './engine';
 import { createSeededRandom, pickWeighted } from './random';
 import type {
@@ -82,9 +86,55 @@ describe('game primitives', () => {
 });
 
 describe('seed content', () => {
+  const requiredEventIds = [
+    'birth_sunny',
+    'child_book',
+    'school_test',
+    'family_meal',
+    'adult_walk',
+    'work_rush',
+    'money_wallet',
+    'birth_rainy',
+    'birth_busy_home',
+    'child_neighbor',
+    'child_lost_toy',
+    'child_tree_climb',
+    'school_group_project',
+    'school_bully_choice',
+    'school_art_day',
+    'school_sports_day',
+    'family_argument',
+    'family_sibling_game',
+    'family_parent_tired',
+    'adult_room_clean',
+    'adult_old_friend',
+    'adult_bad_sleep',
+    'work_kind_customer',
+    'work_mistake',
+    'work_extra_shift',
+    'money_small_bonus',
+    'money_broken_phone',
+    'health_minor_fever',
+    'health_knee_pain',
+    'elder_quiet_morning',
+    'elder_memory_box',
+  ];
+
   it('ships enough original P0 events for the first playable loop', () => {
     expect(events.length).toBeGreaterThanOrEqual(24);
     expect(events.every((event) => event.choices.length >= 1)).toBe(true);
+  });
+
+  it('ships exactly the required Task 4 event ids', () => {
+    const eventIds = events.map((event) => event.id);
+
+    expect(eventIds).toHaveLength(requiredEventIds.length);
+    expect(new Set(eventIds)).toHaveLength(requiredEventIds.length);
+    expect([...eventIds].sort()).toEqual([...requiredEventIds].sort());
+  });
+
+  it('requires a job for work bonus events', () => {
+    expect(events.find((event) => event.id === 'money_small_bonus')?.requires).toEqual({ hasJob: true });
   });
 
   it('ships ordinary jobs for adult gameplay', () => {
@@ -95,5 +145,22 @@ describe('seed content', () => {
       'driver',
       'support_agent',
     ]);
+  });
+
+  it('ships locale text for all seed content keys', () => {
+    const localeKeys = [
+      ...events.flatMap((event) => [
+        event.textKey,
+        ...event.choices.flatMap((choice) => [choice.textKey, choice.resultKey]),
+      ]),
+      ...countries.map((country) => country.nameKey),
+      ...jobs.map((job) => job.titleKey),
+      ...activities.map((activity) => activity.titleKey),
+    ];
+    const zhKeys = zhCN as Record<string, string>;
+    const enKeys = enUS as Record<string, string>;
+
+    expect(localeKeys.every((key) => key in zhKeys)).toBe(true);
+    expect(localeKeys.every((key) => key in enKeys)).toBe(true);
   });
 });

@@ -432,6 +432,7 @@ export const events: LifeEvent[] = [
     maxAge: 70,
     weight: 1,
     tags: ['money', 'work'],
+    requires: { hasJob: true },
     choices: [
       {
         id: 'save',
