@@ -11,7 +11,7 @@ export function SchoolWorkPanel({ life }: SchoolWorkPanelProps) {
   return (
     <div className="screen-stack">
       <section className="panel">
-        <p className="panel-title">{locale === 'zh-CN' ? '学校' : translate(locale, 'ui.label.school')}</p>
+        <p className="panel-title">{translate(locale, 'ui.label.school')}</p>
         <dl className="detail-list">
           <div>
             <dt>{locale === 'zh-CN' ? '阶段' : 'Stage'}</dt>
@@ -29,7 +29,7 @@ export function SchoolWorkPanel({ life }: SchoolWorkPanelProps) {
       </section>
 
       <section className="panel">
-        <p className="panel-title">{locale === 'zh-CN' ? '工作' : translate(locale, 'ui.label.work')}</p>
+        <p className="panel-title">{translate(locale, 'ui.label.work')}</p>
         {job === null ? (
           <p className="empty-text">{locale === 'zh-CN' ? '暂无工作' : 'No job yet'}</p>
         ) : (

@@ -82,30 +82,17 @@ export function CreateLife({ locale, onCreate, onLocaleChange }: CreateLifeProps
             <select value={countryId} onChange={(event) => setCountryId(event.target.value)}>
               {countries.map((country) => (
                 <option key={country.id} value={country.id}>
-                  {countryLabel(country.id, locale, country.nameKey)}
+                  {translate(locale, country.nameKey)}
                 </option>
               ))}
             </select>
           </label>
 
           <button className="primary-button" type="submit">
-            {locale === 'zh-CN' ? '创建人生' : translate(locale, 'ui.action.createLife')}
+            {translate(locale, 'ui.action.createLife')}
           </button>
         </form>
       </section>
     </main>
   );
-}
-
-function countryLabel(countryId: string, locale: Locale, nameKey: string): string {
-  if (locale !== 'zh-CN') {
-    return translate(locale, nameKey);
-  }
-
-  const labels: Record<string, string> = {
-    cn: '中国',
-    us: '美国',
-    jp: '日本',
-  };
-  return labels[countryId] ?? translate(locale, nameKey);
 }

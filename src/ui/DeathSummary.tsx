@@ -12,12 +12,12 @@ export function DeathSummary({ life, onNewLife }: DeathSummaryProps) {
   return (
     <main className="app-shell">
       <section className="panel death-panel">
-        <p className="eyebrow">{locale === 'zh-CN' ? '人生结算' : translate(locale, 'ui.label.deathSummary')}</p>
+        <p className="eyebrow">{translate(locale, 'ui.label.deathSummary')}</p>
         <h1>{life.character.name}</h1>
         {deathSummary !== null && (
           <dl className="detail-list">
             <div>
-              <dt>{locale === 'zh-CN' ? '年龄' : translate(locale, 'ui.label.age')}</dt>
+              <dt>{translate(locale, 'ui.label.age')}</dt>
               <dd>{deathSummary.age}</dd>
             </div>
             <div>
@@ -31,7 +31,7 @@ export function DeathSummary({ life, onNewLife }: DeathSummaryProps) {
           </dl>
         )}
         <button className="primary-button" type="button" onClick={onNewLife}>
-          {locale === 'zh-CN' ? '开始新人生' : translate(locale, 'ui.action.newLife')}
+          {translate(locale, 'ui.action.newLife')}
         </button>
       </section>
     </main>

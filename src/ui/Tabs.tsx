@@ -22,24 +22,9 @@ export function Tabs({ activeTab, locale, onTabChange }: TabsProps) {
           type="button"
           onClick={() => onTabChange(tab)}
         >
-          {tabLabel(tab, locale)}
+          {translate(locale, `ui.tab.${tab}`)}
         </button>
       ))}
     </nav>
   );
-}
-
-function tabLabel(tab: AppTab, locale: Locale): string {
-  if (locale !== 'zh-CN') {
-    return translate(locale, `ui.tab.${tab}`);
-  }
-
-  const labels: Record<AppTab, string> = {
-    life: '人生',
-    relationships: '关系',
-    schoolWork: '学业工作',
-    activities: '活动',
-    profile: '档案',
-  };
-  return labels[tab];
 }

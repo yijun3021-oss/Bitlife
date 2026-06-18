@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { translate } from './i18n';
 import { useLifeStore } from './store/lifeStore';
 import { ActivityPanel } from './ui/ActivityPanel';
 import { CreateLife } from './ui/CreateLife';
@@ -46,12 +47,12 @@ export function App() {
           <p className="panel-title">{life.character.name}</p>
           <dl className="detail-list">
             <div>
-              <dt>{locale === 'zh-CN' ? '国家' : 'Country'}</dt>
-              <dd>{life.character.countryId.toUpperCase()}</dd>
+              <dt>{translate(locale, 'ui.label.country')}</dt>
+              <dd>{translate(locale, `country.${life.character.countryId}`)}</dd>
             </div>
             <div>
               <dt>{locale === 'zh-CN' ? '状态' : 'Status'}</dt>
-              <dd>{life.statuses.length === 0 ? (locale === 'zh-CN' ? '平稳' : 'Stable') : life.statuses.join(', ')}</dd>
+              <dd>{life.statuses.length === 0 ? (locale === 'zh-CN' ? '稳定' : 'Stable') : life.statuses.join(', ')}</dd>
             </div>
           </dl>
         </section>

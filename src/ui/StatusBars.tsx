@@ -17,7 +17,7 @@ export function StatusBars({ attributes, locale }: StatusBarsProps) {
         return (
           <div className="stat-row" key={key}>
             <div className="stat-label">
-              <span>{statLabel(key, locale)}</span>
+              <span>{translate(locale, `ui.stat.${key}`)}</span>
               <strong>{value}</strong>
             </div>
             <div className="stat-track" aria-hidden="true">
@@ -28,18 +28,4 @@ export function StatusBars({ attributes, locale }: StatusBarsProps) {
       })}
     </div>
   );
-}
-
-function statLabel(key: keyof Attributes, locale: Locale): string {
-  if (locale !== 'zh-CN') {
-    return translate(locale, `ui.stat.${key}`);
-  }
-
-  const labels: Record<keyof Attributes, string> = {
-    happiness: '幸福',
-    health: '健康',
-    smarts: '智力',
-    looks: '外貌',
-  };
-  return labels[key];
 }

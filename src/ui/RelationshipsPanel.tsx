@@ -8,7 +8,7 @@ interface RelationshipsPanelProps {
 export function RelationshipsPanel({ life }: RelationshipsPanelProps) {
   return (
     <section className="panel">
-      <p className="panel-title">{life.locale === 'zh-CN' ? '家庭关系' : translate(life.locale, 'ui.label.relationships')}</p>
+      <p className="panel-title">{translate(life.locale, 'ui.label.relationships')}</p>
       <div className="list-stack">
         {life.relationships.map((relationship) => (
           <article className="row-panel" key={relationship.id}>
