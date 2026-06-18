@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.worktrees/
+wiki_dump/
+wiki_dump_test/
