@@ -1,15 +1,20 @@
-export type LocaleCode = 'zh-CN' | 'en-US';
+export type Locale = 'zh-CN' | 'en-US';
+export type LocaleCode = Locale;
 export type Gender = 'female' | 'male' | 'non_binary';
 export type LifeStage = 'infant' | 'child' | 'teen' | 'adult' | 'elder';
-export type RelationshipType = 'mother' | 'father' | 'sibling';
+export type RelationshipKind = 'mother' | 'father' | 'sibling';
+export type RelationshipType = RelationshipKind;
 export type SchoolStage = 'none' | 'elementary' | 'middle' | 'finished';
+export type AttributeName = keyof Attributes;
 
-export interface AttributeState {
+export interface Attributes {
   happiness: number;
   health: number;
   smarts: number;
   looks: number;
 }
+
+export type AttributeState = Attributes;
 
 export interface Character {
   id: string;
@@ -18,30 +23,36 @@ export interface Character {
   countryId: string;
   age: number;
   alive: boolean;
-  attributes: AttributeState;
+  attributes: Attributes;
   money: number;
 }
 
 export interface Relationship {
   id: string;
   name: string;
-  type: RelationshipType;
+  type: RelationshipKind;
   closeness: number;
   alive: boolean;
 }
 
-export interface SchoolState {
+export interface EducationStatus {
   stage: SchoolStage;
   grade: number;
   stress: number;
 }
 
-export interface JobState {
+export type SchoolState = EducationStatus;
+
+export interface Job {
   jobId: string;
   titleKey: string;
   salary: number;
   years: number;
 }
+
+export type JobState = Job;
+
+export type WorkStatus = Job | null;
 
 export interface LifeLogEntry {
   id: string;
@@ -51,22 +62,27 @@ export interface LifeLogEntry {
 }
 
 export interface Effect {
-  attributes?: Partial<AttributeState>;
+  attributes?: Partial<Attributes>;
   money?: number;
   relationship?: {
-    type: RelationshipType;
+    type: RelationshipKind;
     closeness: number;
   };
   addStatus?: string;
   removeStatus?: string;
 }
 
-export interface EventChoice {
-  id: string;
-  textKey: string;
+export interface LifeEventResult {
   resultKey: string;
   effects: Effect;
 }
+
+export interface LifeEventOption extends LifeEventResult {
+  id: string;
+  textKey: string;
+}
+
+export type EventChoice = LifeEventOption;
 
 export interface LifeEvent {
   id: string;
@@ -79,7 +95,7 @@ export interface LifeEvent {
     schoolStage?: SchoolStage;
     hasJob?: boolean;
   };
-  choices: EventChoice[];
+  choices: LifeEventOption[];
 }
 
 export interface DeathSummary {
@@ -91,11 +107,11 @@ export interface DeathSummary {
 
 export interface LifeState {
   version: 1;
-  locale: LocaleCode;
+  locale: Locale;
   character: Character;
   relationships: Relationship[];
-  school: SchoolState;
-  job: JobState | null;
+  school: EducationStatus;
+  job: WorkStatus;
   statuses: string[];
   currentEvent: LifeEvent | null;
   log: LifeLogEntry[];

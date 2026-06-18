@@ -2,14 +2,23 @@ export interface RandomSource {
   next(): number;
 }
 
-export function createSeededRandom(seed: number): RandomSource {
-  let state = seed >>> 0;
+export function createSeededRandom(seed: string): RandomSource {
+  let state = hashSeed(seed);
   return {
     next() {
       state = (state * 1664525 + 1013904223) >>> 0;
       return state / 0x100000000;
     },
   };
+}
+
+function hashSeed(seed: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
 }
 
 export function pickWeighted<T>(items: Array<{ item: T; weight: number }>, random: RandomSource): T {
