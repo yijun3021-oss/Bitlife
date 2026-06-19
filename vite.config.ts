@@ -10,11 +10,13 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: true,
+    exclude: ['node_modules/**', 'dist/**', '.worktrees/**'],
   },
 } as UserConfig & {
   test: {
     environment: string;
     setupFiles: string;
     css: boolean;
+    exclude: string[];
   };
 });
