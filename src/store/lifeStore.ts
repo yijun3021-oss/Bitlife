@@ -31,6 +31,7 @@ interface LifeStoreState {
   ageUpLife: () => void;
   chooseEvent: (choiceId: string) => void;
   runActivity: (activityId: string) => void;
+  chooseJob: (jobId: string) => void;
 }
 
 export const useLifeStore = create<LifeStoreState>((set, get) => ({
@@ -101,13 +102,27 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
       return;
     }
 
+    if (activity.cost > currentLife.character.money) {
+      return;
+    }
+
     if (activityId === 'find_job') {
       const life = findJob(currentLife);
       updateLife(currentLife, life, get().locale, set);
       return;
     }
 
-    const life = applyActivity(currentLife, activity.effects);
+    const life = applyActivity(currentLife, activity.effects, activity.resultKey);
+    updateLife(currentLife, life, get().locale, set);
+  },
+
+  chooseJob: (jobId) => {
+    const currentLife = get().life;
+    if (currentLife === null) {
+      return;
+    }
+
+    const life = findJob(currentLife, jobId);
     updateLife(currentLife, life, get().locale, set);
   },
 }));

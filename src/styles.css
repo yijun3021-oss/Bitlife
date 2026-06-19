@@ -186,6 +186,7 @@ select {
 
 .primary-button,
 .secondary-button,
+.action-card,
 .age-button,
 .tab-button {
   min-height: 44px;
@@ -204,6 +205,75 @@ select {
 .secondary-button {
   color: #214963;
   background: #e8f0f5;
+}
+
+.action-card {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  min-height: 74px;
+  padding: 10px 12px;
+  color: #214963;
+  background: #e8f0f5;
+  text-align: left;
+}
+
+.action-card-title {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.action-card-title span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.action-card-title strong {
+  flex: 0 0 auto;
+  color: #1e5c8d;
+  font-size: 13px;
+}
+
+.action-card-copy,
+.effect-list,
+.locked-note,
+.choice-button small {
+  color: #52615c;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.effect-list,
+.locked-note {
+  display: block;
+}
+
+.locked-note {
+  color: #9b3d35;
+}
+
+.feedback-panel {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  background: #f4f5f1;
+  padding: 10px;
+}
+
+.feedback-panel strong {
+  color: #236aa4;
+  font-size: 12px;
+}
+
+.feedback-panel p {
+  color: #3f4945;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .age-button {
@@ -302,6 +372,19 @@ dd {
 .list-stack {
   display: grid;
   gap: 8px;
+}
+
+.choice-button {
+  display: grid;
+  gap: 4px;
+  height: auto;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  text-align: left;
+}
+
+.choice-button span {
+  font-weight: 800;
 }
 
 .log-list {

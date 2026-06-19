@@ -38,15 +38,15 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: 'Find job' })).not.toBeInTheDocument();
   });
 
-  it('shows find job for adults and hides it after employment', async () => {
+  it('shows job options for adults and hides them after employment', async () => {
     const adult = makeLife({ age: 18, locale: 'en-US' });
     useLifeStore.setState({ locale: 'en-US', life: adult, activeTab: 'activities' });
     render(<App />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Find job' }));
+    await userEvent.click(screen.getByRole('button', { name: /Cashier/ }));
 
     expect(useLifeStore.getState().life?.job).not.toBeNull();
-    expect(screen.queryByRole('button', { name: 'Find job' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Cashier')).not.toBeInTheDocument();
   });
 
   it('disables age up while a yearly event is waiting for a choice', async () => {
@@ -57,6 +57,53 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Create life' }));
 
     expect(screen.getByRole('button', { name: 'Age up' })).toBeDisabled();
+  });
+
+  it('always offers at least two choices for the current yearly event', async () => {
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'English' }));
+    await userEvent.type(screen.getByLabelText('Name'), 'Mina Lin');
+    await userEvent.click(screen.getByRole('button', { name: 'Create life' }));
+
+    const eventPanel = screen.getByText('This year').closest('section');
+    expect(eventPanel).not.toBeNull();
+    expect(within(eventPanel!).getAllByRole('button').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('shows activity costs and gives feedback after running an activity', async () => {
+    const adult = makeLife({ age: 18, locale: 'en-US' });
+    useLifeStore.setState({
+      locale: 'en-US',
+      life: { ...adult, character: { ...adult.character, money: 500 }, currentEvent: null },
+      activeTab: 'activities',
+    });
+    render(<App />);
+
+    expect(screen.getAllByText('Free').length).toBeGreaterThan(0);
+    expect(screen.getByText('$200')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Rest/ }));
+
+    expect(screen.getByText('You took time to rest.')).toBeInTheDocument();
+  });
+
+  it('shows job choices with salaries and lets adults choose one', async () => {
+    const adult = makeLife({ age: 18, locale: 'en-US' });
+    useLifeStore.setState({
+      locale: 'en-US',
+      life: { ...adult, currentEvent: null },
+      activeTab: 'activities',
+    });
+    render(<App />);
+
+    expect(screen.getByText('Cashier')).toBeInTheDocument();
+    expect(screen.getByText('$18,000/yr')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Cashier/ }));
+
+    expect(useLifeStore.getState().life?.job?.jobId).toBe('cashier');
+    expect(screen.queryByText('Cashier')).not.toBeInTheDocument();
   });
 
   it('uses English form labels and actions after switching language', async () => {

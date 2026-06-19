@@ -2,6 +2,7 @@ import { events } from '../content/events';
 import { jobs } from '../content/jobs';
 import { familyNames, givenNames } from '../content/names';
 import { createSeededRandom, pickWeighted, type RandomSource } from './random';
+import { PASS_EVENT_CHOICE_ID } from './types';
 import type {
   Attributes,
   EducationStatus,
@@ -120,6 +121,17 @@ export function applyChoice(life: LifeState, choiceId: string): LifeState {
     return life;
   }
 
+  if (choiceId === PASS_EVENT_CHOICE_ID) {
+    return {
+      ...life,
+      currentEvent: null,
+      log: [
+        makeLogEntry(life.character.age, 'log.eventPassed', life.log.length),
+        ...life.log,
+      ],
+    };
+  }
+
   const choice = life.currentEvent.choices.find((option) => option.id === choiceId);
   if (choice === undefined) {
     return life;
@@ -193,14 +205,20 @@ export function ageUp(life: LifeState, seed: string | number = `${life.character
   };
 }
 
-export function findJob(life: LifeState): LifeState {
+export function findJob(life: LifeState, jobId?: string): LifeState {
   if (!life.character.alive || life.character.age < 18 || life.job !== null) {
     return life;
   }
 
-  const selected = jobs
-    .filter((job) => life.character.attributes.smarts >= job.smartsMin)
-    .reduce((best, job) => (job.smartsMin > best.smartsMin ? job : best), jobs[0]);
+  const qualifiedJobs = jobs.filter((job) => life.character.attributes.smarts >= job.smartsMin);
+  const selected = jobId === undefined
+    ? qualifiedJobs.reduce((best, job) => (job.smartsMin > best.smartsMin ? job : best), qualifiedJobs[0])
+    : qualifiedJobs.find((job) => job.id === jobId);
+
+  if (selected === undefined) {
+    return life;
+  }
+
   return {
     ...life,
     job: {
@@ -209,14 +227,30 @@ export function findJob(life: LifeState): LifeState {
       salary: selected.salary,
       years: 0,
     },
+    log: [
+      makeLogEntry(life.character.age, 'log.jobAccepted', life.log.length, { job: selected.titleKey, salary: selected.salary }),
+      ...life.log,
+    ],
   };
 }
 
-export function applyActivity(life: LifeState, activityEffect: ChoiceEffects): LifeState {
+export function applyActivity(life: LifeState, activityEffect: ChoiceEffects, resultKey?: string): LifeState {
   if (!life.character.alive) {
     return life;
   }
-  return applyEffect(life, activityEffect);
+  const updated = applyEffect(life, activityEffect);
+
+  if (resultKey === undefined) {
+    return updated;
+  }
+
+  return {
+    ...updated,
+    log: [
+      makeLogEntry(updated.character.age, resultKey, updated.log.length),
+      ...updated.log,
+    ],
+  };
 }
 
 function eventMatchesLife(event: LifeEvent, life: LifeState): boolean {
@@ -244,7 +278,7 @@ function applyEffect(life: LifeState, effect: ChoiceEffects): LifeState {
     character: {
       ...life.character,
       attributes,
-      money: life.character.money + (effect.money ?? 0),
+      money: Math.max(0, life.character.money + (effect.money ?? 0)),
     },
     relationships,
     statuses,

@@ -6,3 +6,4 @@ wiki_dump_test/
 *.tsbuildinfo
 vite.config.d.ts
 vite.config.js
+.vite-server.*.log

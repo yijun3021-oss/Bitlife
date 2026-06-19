@@ -203,6 +203,12 @@ describe('seed content', () => {
     ]);
   });
 
+  it('ships enough visible activities with cost and feedback metadata', () => {
+    expect(activities.length).toBeGreaterThanOrEqual(9);
+    expect(activities.every((activity) => typeof activity.cost === 'number')).toBe(true);
+    expect(activities.every((activity) => typeof activity.resultKey === 'string')).toBe(true);
+  });
+
   it('ships locale text for all seed content keys', () => {
     const localeKeys = [
       ...events.flatMap((event) => [
@@ -322,6 +328,25 @@ describe('life engine', () => {
     expect(findJob(highSmarts).job?.jobId).toBe('support_agent');
   });
 
+  it('lets adults choose a specific qualified job instead of auto-selecting one', () => {
+    const adult = ageUpTo(
+      createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }),
+      18,
+    );
+
+    expect(findJob(adult, 'cashier').job?.jobId).toBe('cashier');
+
+    const unqualified = {
+      ...adult,
+      character: {
+        ...adult.character,
+        attributes: { ...adult.character.attributes, smarts: 5 },
+      },
+    };
+
+    expect(findJob(unqualified, 'support_agent')).toBe(unqualified);
+  });
+
   it('only allows job-required events after the life has a job', () => {
     const adult = ageUpTo(
       createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }),
@@ -353,6 +378,15 @@ describe('life engine', () => {
     expect(life.character.attributes.health).toBe(75);
     expect(life.character.money).toBe(0);
     expect(life.statuses).toEqual([]);
+  });
+
+  it('records activity feedback and never lets paid effects create debt', () => {
+    const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
+
+    const next = applyActivity(life, { attributes: { health: 2 }, money: -200 }, 'activity.doctorVisit.result');
+
+    expect(next.character.money).toBe(0);
+    expect(next.log[0].textKey).toBe('activity.doctorVisit.result');
   });
 
   it('records death log and an existing death cause key for deterministic high-risk death', () => {

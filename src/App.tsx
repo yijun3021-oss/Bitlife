@@ -16,6 +16,7 @@ export function App() {
     activeTab,
     ageUpLife,
     chooseEvent,
+    chooseJob,
     clearLife,
     createLife,
     life,
@@ -43,7 +44,7 @@ export function App() {
       {activeTab === 'life' && <Dashboard life={life} onAgeUp={ageUpLife} onChoose={chooseEvent} />}
       {activeTab === 'relationships' && <RelationshipsPanel life={life} />}
       {activeTab === 'schoolWork' && <SchoolWorkPanel life={life} />}
-      {activeTab === 'activities' && <ActivityPanel life={life} onRun={runActivity} />}
+      {activeTab === 'activities' && <ActivityPanel life={life} onChooseJob={chooseJob} onRun={runActivity} />}
       {activeTab === 'profile' && (
         <section className="panel">
           <div className="profile-header">
