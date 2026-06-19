@@ -1,11 +1,12 @@
 @import url("https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap");
 
 :root {
-  --phone-design-width: 1080px;
-  --phone-design-height: 1920px;
-  --phone-logical-width: 360px;
-  --phone-logical-height: 640px;
-  --phone-render-scale: 3;
+  --phone-width: 400px;
+  --phone-height: 841px;
+  --app-width: min(100vw, var(--phone-width));
+  --app-height: min(100dvh, var(--phone-height));
+  --game-header-height: 97px;
+  --bottom-tabs-height: 92px;
   color: #243346;
   background: #1f2130;
   font-family: Nunito, "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
@@ -18,22 +19,28 @@
 }
 
 html {
-  min-width: var(--phone-design-width);
-  min-height: var(--phone-design-height);
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
   background: #1f2130;
 }
 
 body {
   margin: 0;
-  min-width: var(--phone-design-width);
-  min-height: var(--phone-design-height);
+  display: grid;
+  justify-items: start;
+  align-items: start;
+  width: 100%;
+  min-width: 0;
+  min-height: 100dvh;
+  overflow: hidden;
   background: #1f2130;
 }
 
 #root {
-  width: var(--phone-design-width);
-  min-height: var(--phone-design-height);
-  margin: 0 auto;
+  width: var(--app-width);
+  min-height: var(--app-height);
+  margin: 0;
 }
 
 button,
@@ -69,15 +76,26 @@ ol {
 }
 
 .app-shell {
-  width: var(--phone-logical-width);
-  min-width: var(--phone-logical-width);
-  min-height: var(--phone-logical-height);
-  margin: 0;
-  overflow-x: hidden;
+  position: relative;
+  width: var(--app-width);
+  max-width: var(--phone-width);
+  min-width: 0;
+  height: var(--app-height);
+  min-height: 0;
+  margin: 0 auto;
+  overflow: hidden;
   background: #e7edf2;
   box-shadow: 0 0 36px rgba(0, 0, 0, 0.32);
-  transform: scale(var(--phone-render-scale));
-  transform-origin: top left;
+}
+
+@media (min-width: 520px) {
+  body {
+    justify-items: center;
+  }
+}
+
+.app-shell:not(.game-shell) {
+  overflow-y: auto;
 }
 
 .start-shell {
@@ -88,7 +106,7 @@ ol {
 }
 
 .game-shell {
-  padding: 0 0 calc(92px + env(safe-area-inset-bottom));
+  padding: 0;
   background: #e7edf2;
 }
 
@@ -97,12 +115,15 @@ ol {
 }
 
 .screen-area {
-  min-height: calc(var(--phone-logical-height) - 104px);
+  height: calc(var(--app-height) - var(--game-header-height) - var(--bottom-tabs-height));
+  min-height: 0;
+  overflow-y: auto;
   background: #e7edf2;
 }
 
 .game-shell--life .screen-area {
-  min-height: calc(var(--phone-logical-height) - 116px);
+  height: calc(var(--app-height) - var(--game-header-height) - var(--bottom-tabs-height));
+  min-height: 0;
   padding: 0 10px 18px;
   color: #eef7fb;
   background: #202b36;
@@ -723,16 +744,17 @@ dd {
 }
 
 .bottom-tabs {
-  position: fixed;
+  position: absolute;
   bottom: 0;
   left: 0;
   z-index: 30;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   align-items: end;
-  width: var(--phone-logical-width);
-  min-width: var(--phone-logical-width);
-  min-height: 76px;
+  width: 100%;
+  min-width: 0;
+  height: var(--bottom-tabs-height);
+  min-height: var(--bottom-tabs-height);
   margin: 0;
   border-top: 1px solid #0a2f39;
   background: #0a4c58;
@@ -865,7 +887,7 @@ dd {
 
 @media (max-width: 340px) {
   .app-shell {
-    width: var(--phone-logical-width);
+    width: var(--app-width);
   }
 
   .screen-title {
