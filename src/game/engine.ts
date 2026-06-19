@@ -14,6 +14,7 @@ import type {
   LifeState,
   Locale,
   Relationship,
+  RelationshipActionId,
   RelationshipKind,
 } from './types';
 
@@ -26,6 +27,15 @@ interface NewLifeInput {
 }
 
 type ChoiceEffects = LifeEventOption['effects'];
+
+const relationshipInteractions: Record<
+  RelationshipActionId,
+  { closeness: number; happiness: number; action: string }
+> = {
+  talk: { closeness: 3, happiness: 1, action: 'talked with' },
+  spend_time: { closeness: 5, happiness: 2, action: 'spent time with' },
+  argue: { closeness: -6, happiness: -1, action: 'argued with' },
+};
 
 export function clampAttribute(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -105,6 +115,7 @@ export function createNewLife(input: NewLifeInput): LifeState {
     school: getSchoolState(0),
     job: null,
     statuses: [],
+    usedActivitiesThisAge: [],
     currentEvent: null,
     log: [birthLog],
     deathSummary: null,
@@ -186,6 +197,7 @@ export function ageUp(life: LifeState, seed: string | number = `${life.character
     },
     school: getSchoolState(nextAge, life.school),
     job: life.job === null ? null : { ...life.job, years: life.job.years + 1 },
+    usedActivitiesThisAge: [],
     currentEvent: null,
     log: [
       ...(salary > 0 ? [makeLogEntry(nextAge, 'log.salary', life.log.length + 1, { amount: salary })] : []),
@@ -234,26 +246,79 @@ export function findJob(life: LifeState, jobId?: string): LifeState {
   };
 }
 
-export function applyActivity(life: LifeState, activityEffect: ChoiceEffects, resultKey?: string): LifeState {
+export function applyActivity(
+  life: LifeState,
+  activityEffect: ChoiceEffects,
+  resultKey?: string,
+  activityId?: string,
+): LifeState {
   if (!life.character.alive) {
     return life;
   }
   const updated = applyEffect(life, activityEffect);
+  const currentUsedActivities = updated.usedActivitiesThisAge ?? [];
+  const usedActivitiesThisAge =
+    activityId === undefined || currentUsedActivities.includes(activityId)
+      ? currentUsedActivities
+      : [...currentUsedActivities, activityId];
+  const updatedWithUsage: LifeState = {
+    ...updated,
+    usedActivitiesThisAge,
+  };
 
   if (resultKey === undefined) {
-    return updated;
+    return updatedWithUsage;
   }
 
   return {
-    ...updated,
+    ...updatedWithUsage,
     log: [
-      makeLogEntry(updated.character.age, resultKey, updated.log.length),
+      makeLogEntry(updatedWithUsage.character.age, resultKey, updatedWithUsage.log.length),
+      ...updatedWithUsage.log,
+    ],
+  };
+}
+
+export function interactWithRelationship(
+  life: LifeState,
+  relationshipId: string,
+  actionId: RelationshipActionId,
+): LifeState {
+  if (!life.character.alive) {
+    return life;
+  }
+
+  const relationship = life.relationships.find((item) => item.id === relationshipId);
+  const interaction = relationshipInteractions[actionId];
+  if (relationship === undefined || interaction === undefined) {
+    return life;
+  }
+
+  const updated = applyEffect(life, { attributes: { happiness: interaction.happiness } });
+  const relationships = updated.relationships.map((item) => {
+    if (item.id !== relationshipId) {
+      return item;
+    }
+    return {
+      ...item,
+      closeness: clampAttribute(item.closeness + interaction.closeness),
+    };
+  });
+
+  return {
+    ...updated,
+    relationships,
+    log: [
+      makeLogEntry(updated.character.age, 'log.relationshipInteraction', updated.log.length, {
+        action: interaction.action,
+        name: relationship.name,
+      }),
       ...updated.log,
     ],
   };
 }
 
-function eventMatchesLife(event: LifeEvent, life: LifeState): boolean {
+export function eventMatchesLife(event: LifeEvent, life: LifeState): boolean {
   if (life.character.age < event.minAge || life.character.age > event.maxAge) {
     return false;
   }
@@ -261,6 +326,18 @@ function eventMatchesLife(event: LifeEvent, life: LifeState): boolean {
     return false;
   }
   if (event.requires?.hasJob !== undefined && event.requires.hasJob !== (life.job !== null)) {
+    return false;
+  }
+  if (!attributesMeetMinimum(life.character.attributes, event.requires?.minAttributes)) {
+    return false;
+  }
+  if (!attributesMeetMaximum(life.character.attributes, event.requires?.maxAttributes)) {
+    return false;
+  }
+  if (event.requires?.hasStatus !== undefined && !life.statuses.includes(event.requires.hasStatus)) {
+    return false;
+  }
+  if (event.requires?.missingStatus !== undefined && life.statuses.includes(event.requires.missingStatus)) {
     return false;
   }
   return true;
@@ -271,6 +348,12 @@ function applyEffect(life: LifeState, effect: ChoiceEffects): LifeState {
   const relationships = effect.relationship === undefined
     ? life.relationships
     : applyRelationshipEffect(life.relationships, effect.relationship.type, effect.relationship.closeness);
+  const school = effect.school === undefined
+    ? life.school
+    : {
+      ...life.school,
+      stress: clampAttribute(life.school.stress + (effect.school.stress ?? 0)),
+    };
   const statuses = applyStatusEffect(life.statuses, effect.addStatus, effect.removeStatus);
 
   return {
@@ -281,8 +364,35 @@ function applyEffect(life: LifeState, effect: ChoiceEffects): LifeState {
       money: Math.max(0, life.character.money + (effect.money ?? 0)),
     },
     relationships,
+    school,
     statuses,
   };
+}
+
+function attributesMeetMinimum(attributes: Attributes, minimums?: Partial<Attributes>): boolean {
+  if (minimums === undefined) {
+    return true;
+  }
+
+  return Object.entries(minimums).every(([key, value]) => {
+    if (value === undefined) {
+      return true;
+    }
+    return attributes[key as keyof Attributes] >= value;
+  });
+}
+
+function attributesMeetMaximum(attributes: Attributes, maximums?: Partial<Attributes>): boolean {
+  if (maximums === undefined) {
+    return true;
+  }
+
+  return Object.entries(maximums).every(([key, value]) => {
+    if (value === undefined) {
+      return true;
+    }
+    return attributes[key as keyof Attributes] <= value;
+  });
 }
 
 function applyAttributeEffect(attributes: Attributes, effect: Partial<Attributes> = {}): Attributes {

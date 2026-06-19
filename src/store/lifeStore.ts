@@ -1,7 +1,14 @@
 import { create } from 'zustand';
 import { activities } from '../content/activities';
-import { ageUp, applyActivity, applyChoice, createNewLife, findJob } from '../game/engine';
-import type { Gender, LifeState, Locale } from '../game/types';
+import {
+  ageUp,
+  applyActivity,
+  applyChoice,
+  createNewLife,
+  findJob,
+  interactWithRelationship,
+} from '../game/engine';
+import type { Gender, LifeState, Locale, RelationshipActionId } from '../game/types';
 
 export const SAVE_KEY = 'bitliffe.save.v1';
 
@@ -22,9 +29,11 @@ interface CreateLifeInput {
 interface LifeStoreState {
   locale: Locale;
   life: LifeState | null;
+  savedLife: LifeState | null;
   activeTab: ActiveTab;
   createLife: (input: CreateLifeInput) => void;
   loadLife: () => void;
+  continueLife: () => void;
   clearLife: () => void;
   setLocale: (locale: Locale) => void;
   setActiveTab: (tab: ActiveTab) => void;
@@ -32,11 +41,13 @@ interface LifeStoreState {
   chooseEvent: (choiceId: string) => void;
   runActivity: (activityId: string) => void;
   chooseJob: (jobId: string) => void;
+  interactRelationship: (relationshipId: string, actionId: RelationshipActionId) => void;
 }
 
 export const useLifeStore = create<LifeStoreState>((set, get) => ({
   locale: 'zh-CN',
   life: null,
+  savedLife: null,
   activeTab: 'life',
 
   createLife: (input) => {
@@ -45,7 +56,7 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
       locale: get().locale,
       seed: Date.now() % 100000,
     });
-    set({ life, activeTab: 'life' });
+    set({ life, savedLife: null, activeTab: 'life' });
     writeSave(get().locale, life);
   },
 
@@ -54,19 +65,30 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
     if (save === null) {
       return;
     }
-    set({ locale: save.locale, life: save.life });
+    set({ locale: save.locale, life: null, savedLife: save.life });
+  },
+
+  continueLife: () => {
+    const savedLife = get().savedLife;
+    if (savedLife === null) {
+      return;
+    }
+    set({ life: savedLife, savedLife: null, activeTab: 'life' });
+    writeSave(get().locale, savedLife);
   },
 
   clearLife: () => {
     removeSave();
-    set({ life: null, activeTab: 'life' });
+    set({ life: null, savedLife: null, activeTab: 'life' });
   },
 
   setLocale: (locale) => {
     const currentLife = get().life;
+    const currentSavedLife = get().savedLife;
     const life = currentLife === null ? null : { ...currentLife, locale };
-    set({ locale, life });
-    writeSave(locale, life);
+    const savedLife = currentSavedLife === null ? null : { ...currentSavedLife, locale };
+    set({ locale, life, savedLife });
+    writeSave(locale, life ?? savedLife);
   },
 
   setActiveTab: (activeTab) => {
@@ -102,6 +124,10 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
       return;
     }
 
+    if (activity.oncePerAge === true && currentLife.usedActivitiesThisAge.includes(activity.id)) {
+      return;
+    }
+
     if (activity.cost > currentLife.character.money) {
       return;
     }
@@ -112,7 +138,12 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
       return;
     }
 
-    const life = applyActivity(currentLife, activity.effects, activity.resultKey);
+    const life = applyActivity(
+      currentLife,
+      activity.effects,
+      activity.resultKey,
+      activity.oncePerAge === true ? activity.id : undefined,
+    );
     updateLife(currentLife, life, get().locale, set);
   },
 
@@ -123,6 +154,16 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
     }
 
     const life = findJob(currentLife, jobId);
+    updateLife(currentLife, life, get().locale, set);
+  },
+
+  interactRelationship: (relationshipId, actionId) => {
+    const currentLife = get().life;
+    if (currentLife === null) {
+      return;
+    }
+
+    const life = interactWithRelationship(currentLife, relationshipId, actionId);
     updateLife(currentLife, life, get().locale, set);
   },
 }));
@@ -142,7 +183,7 @@ function readSave(): SaveRecord | null {
     return {
       version: 1,
       locale: save.locale,
-      life: save.life ?? null,
+      life: save.life === null ? null : normalizeLife(save.life),
     };
   } catch {
     return null;
@@ -202,10 +243,19 @@ function isSavedLife(value: unknown): value is LifeState | null {
     isSavedSchool(maybeLife.school) &&
     isSavedJob(maybeLife.job) &&
     isStringArray(maybeLife.statuses) &&
+    (maybeLife.usedActivitiesThisAge === undefined || isStringArray(maybeLife.usedActivitiesThisAge)) &&
     isSavedCurrentEvent(maybeLife.currentEvent) &&
     isSavedLog(maybeLife.log) &&
     isSavedDeathSummary(maybeLife.deathSummary)
   );
+}
+
+function normalizeLife(life: LifeState): LifeState {
+  const usedActivitiesThisAge = isStringArray(life.usedActivitiesThisAge) ? life.usedActivitiesThisAge : [];
+  return {
+    ...life,
+    usedActivitiesThisAge,
+  };
 }
 
 function isSavedCharacter(value: unknown): value is LifeState['character'] {
@@ -334,6 +384,7 @@ function isSavedEffects(value: unknown): value is NonNullable<LifeState['current
     isOptionalAttributesEffect(effects.attributes) &&
     (effects.money === undefined || typeof effects.money === 'number') &&
     isOptionalRelationshipEffect(effects.relationship) &&
+    isOptionalSchoolEffect(effects.school) &&
     (effects.addStatus === undefined || typeof effects.addStatus === 'string') &&
     (effects.removeStatus === undefined || typeof effects.removeStatus === 'string')
   );
@@ -364,6 +415,17 @@ function isOptionalRelationshipEffect(value: unknown): boolean {
   }
 
   return isRelationshipKind(value.type) && typeof value.closeness === 'number';
+}
+
+function isOptionalSchoolEffect(value: unknown): boolean {
+  if (value === undefined) {
+    return true;
+  }
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  return value.stress === undefined || typeof value.stress === 'number';
 }
 
 function isSavedLog(value: unknown): value is LifeState['log'] {

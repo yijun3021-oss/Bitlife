@@ -58,7 +58,42 @@ describe('life store', () => {
     useLifeStore.getState().loadLife();
 
     expect(useLifeStore.getState().locale).toBe('en-US');
+    expect(useLifeStore.getState().life).toBeNull();
+    expect(useLifeStore.getState().savedLife?.character.name).toBe('Mina Lin');
+  });
+
+  it('continues a loaded saved life on demand', () => {
+    const savedLife = createNewLife({
+      name: 'Mina Lin',
+      gender: 'female',
+      countryId: 'cn',
+      locale: 'en-US',
+      seed: 12,
+    });
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ version: 1, locale: 'en-US', life: savedLife }));
+
+    useLifeStore.getState().loadLife();
+    useLifeStore.getState().continueLife();
+
     expect(useLifeStore.getState().life?.character.name).toBe('Mina Lin');
+    expect(useLifeStore.getState().activeTab).toBe('life');
+  });
+
+  it('normalizes legacy saved lives that do not have yearly activity usage', () => {
+    const savedLife = createNewLife({
+      name: 'Mina Lin',
+      gender: 'female',
+      countryId: 'cn',
+      locale: 'en-US',
+      seed: 12,
+    });
+    const legacyLife = { ...savedLife } as Record<string, unknown>;
+    delete legacyLife.usedActivitiesThisAge;
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ version: 1, locale: 'en-US', life: legacyLife }));
+
+    useLifeStore.getState().loadLife();
+
+    expect(useLifeStore.getState().savedLife?.usedActivitiesThisAge).toEqual([]);
   });
 
   it('ignores invalid saved data when loading', () => {
@@ -239,6 +274,21 @@ describe('life store', () => {
     expect(useLifeStore.getState().activeTab).toBe('activities');
   });
 
+  it('applies relationship interactions to a specific family member', () => {
+    const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'en-US', seed: 12 });
+    const mother = life.relationships.find((relationship) => relationship.type === 'mother');
+    if (mother === undefined) {
+      throw new Error('Expected mother relationship');
+    }
+    useLifeStore.setState({ locale: 'en-US', life });
+
+    useLifeStore.getState().interactRelationship(mother.id, 'talk');
+
+    const updatedMother = useLifeStore.getState().life?.relationships.find((relationship) => relationship.id === mother.id);
+    expect(updatedMother?.closeness).toBeGreaterThan(mother.closeness);
+    expect(useLifeStore.getState().life?.log[0].textKey).toBe('log.relationshipInteraction');
+  });
+
   it('clears the current life and persisted save', () => {
     useLifeStore.getState().createLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn' });
 
@@ -280,6 +330,26 @@ describe('life store', () => {
 
     expect(useLifeStore.getState().life?.job?.jobId).toBe('support_agent');
     expect(localStorage.getItem(SAVE_KEY)).toContain('support_agent');
+  });
+
+  it('prevents once-per-year activities until the life ages up', () => {
+    const life = {
+      ...createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }),
+      currentEvent: null,
+    };
+    useLifeStore.setState({ life });
+
+    useLifeStore.getState().runActivity('rest');
+    const afterFirstRest = useLifeStore.getState().life;
+    useLifeStore.getState().runActivity('rest');
+    const afterSecondRest = useLifeStore.getState().life;
+    useLifeStore.getState().ageUpLife();
+    useLifeStore.getState().runActivity('rest');
+
+    expect(afterFirstRest?.usedActivitiesThisAge).toEqual(['rest']);
+    expect(afterSecondRest).toBe(afterFirstRest);
+    expect(useLifeStore.getState().life?.character.age).toBe(1);
+    expect(useLifeStore.getState().life?.usedActivitiesThisAge).toEqual(['rest']);
   });
 
   it('does not write a save for invalid activity ids or underage find job', () => {

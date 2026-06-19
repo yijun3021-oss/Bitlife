@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { countries } from '../content/countries';
+import { familyNames, givenNames } from '../content/names';
 import type { Gender, Locale } from '../game/types';
 import { translate } from '../i18n';
 import { LocaleSwitcher } from './LocaleSwitcher';
 
 interface CreateLifeProps {
+  hasSavedLife?: boolean;
   locale: Locale;
   onCreate(input: { name: string; gender: Gender; countryId: string }): void;
+  onContinue?(): void;
   onLocaleChange(locale: Locale): void;
 }
 
@@ -16,7 +19,13 @@ const GENDERS: Array<{ value: Gender; labelKey: string }> = [
   { value: 'non_binary', labelKey: 'gender.nonBinary' },
 ];
 
-export function CreateLife({ locale, onCreate, onLocaleChange }: CreateLifeProps) {
+export function CreateLife({
+  hasSavedLife = false,
+  locale,
+  onContinue,
+  onCreate,
+  onLocaleChange,
+}: CreateLifeProps) {
   const [name, setName] = useState('');
   const [gender, setGender] = useState<Gender>('female');
   const [countryId, setCountryId] = useState('cn');
@@ -43,14 +52,25 @@ export function CreateLife({ locale, onCreate, onLocaleChange }: CreateLifeProps
             onCreate({ name: trimmedName, gender, countryId });
           }}
         >
-          <label className="field-label">
-            <span>{translate(locale, 'ui.label.name')}</span>
-            <input
-              autoComplete="name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </label>
+          {hasSavedLife && onContinue !== undefined && (
+            <button className="primary-button" type="button" onClick={onContinue}>
+              {translate(locale, 'ui.action.continueLife')}
+            </button>
+          )}
+          <div className="field-label">
+            <label htmlFor="life-name">{translate(locale, 'ui.label.name')}</label>
+            <span className="field-row">
+              <input
+                autoComplete="name"
+                id="life-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+              <button className="secondary-button" type="button" onClick={() => setName(randomName())}>
+                {translate(locale, 'ui.action.randomName')}
+              </button>
+            </span>
+          </div>
 
           <label className="field-label">
             <span>{translate(locale, 'ui.label.gender')}</span>
@@ -81,4 +101,10 @@ export function CreateLife({ locale, onCreate, onLocaleChange }: CreateLifeProps
       </section>
     </main>
   );
+}
+
+function randomName(): string {
+  const givenName = givenNames[Math.floor(Math.random() * givenNames.length)] ?? givenNames[0];
+  const familyName = familyNames[Math.floor(Math.random() * familyNames.length)] ?? familyNames[0];
+  return `${givenName} ${familyName}`;
 }

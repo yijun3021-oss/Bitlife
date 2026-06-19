@@ -16,13 +16,11 @@ export function StatusBars({ attributes, locale }: StatusBarsProps) {
 
         return (
           <div className="stat-row" key={key}>
-            <div className="stat-label">
-              <span>{translate(locale, `ui.stat.${key}`)}</span>
-              <strong>{value}</strong>
-            </div>
+            <span className="stat-label">{translate(locale, `ui.stat.${key}`)}</span>
             <div className="stat-track" aria-hidden="true">
               <span style={{ width: `${value}%` }} />
             </div>
+            <strong className="stat-value">{value}%</strong>
           </div>
         );
       })}

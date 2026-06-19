@@ -12,6 +12,7 @@ import {
   calculateDeathRisk,
   clampAttribute,
   createNewLife,
+  eventMatchesLife,
   findJob,
   getSchoolState,
   pickNextEvent,
@@ -205,6 +206,7 @@ describe('seed content', () => {
 
   it('ships enough visible activities with cost and feedback metadata', () => {
     expect(activities.length).toBeGreaterThanOrEqual(9);
+    expect(activities.map((activity) => activity.id)).toContain('crime');
     expect(activities.every((activity) => typeof activity.cost === 'number')).toBe(true);
     expect(activities.every((activity) => typeof activity.resultKey === 'string')).toBe(true);
   });
@@ -218,6 +220,8 @@ describe('seed content', () => {
       ...countries.map((country) => country.nameKey),
       ...jobs.map((job) => job.titleKey),
       ...activities.map((activity) => activity.titleKey),
+      ...activities.map((activity) => activity.summaryKey),
+      ...activities.map((activity) => activity.resultKey),
     ];
     const zhKeys = zhCN as Record<string, string>;
     const enKeys = enUS as Record<string, string>;
@@ -243,6 +247,7 @@ describe('life engine', () => {
     expect(life.relationships.map((person) => person.type)).toContain('father');
     expect(life.currentEvent).not.toBeNull();
     expect(life.log[0].textKey).toBe('log.birth');
+    expect(life.usedActivitiesThisAge).toEqual([]);
   });
 
   it('applies choice effects and records the result', () => {
@@ -380,6 +385,60 @@ describe('life engine', () => {
     expect(life.statuses).toEqual([]);
   });
 
+  it('applies school stress effects and clamps them', () => {
+    const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
+
+    const stressed = applyActivity(life, { school: { stress: 35 } });
+    const calm = applyActivity(stressed, { school: { stress: -80 } });
+
+    expect(stressed.school.stress).toBe(35);
+    expect(calm.school.stress).toBe(0);
+    expect(life.school.stress).toBe(0);
+  });
+
+  it('matches events against attribute and status requirements', () => {
+    const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
+    const gatedEvent: LifeEvent = {
+      id: 'gated_event',
+      textKey: 'event.gated.text',
+      minAge: 0,
+      maxAge: 120,
+      weight: 1,
+      tags: ['test'],
+      requires: {
+        minAttributes: { smarts: 60 },
+        hasStatus: 'focused',
+        missingStatus: 'stressed',
+      },
+      choices: [
+        {
+          id: 'ok',
+          textKey: 'event.gated.choice.ok',
+          resultKey: 'event.gated.result.ok',
+          effects: {},
+        },
+      ],
+    };
+
+    expect(eventMatchesLife(gatedEvent, life)).toBe(false);
+    expect(eventMatchesLife(gatedEvent, {
+      ...life,
+      character: {
+        ...life.character,
+        attributes: { ...life.character.attributes, smarts: 80 },
+      },
+      statuses: ['focused'],
+    })).toBe(true);
+    expect(eventMatchesLife(gatedEvent, {
+      ...life,
+      character: {
+        ...life.character,
+        attributes: { ...life.character.attributes, smarts: 80 },
+      },
+      statuses: ['focused', 'stressed'],
+    })).toBe(false);
+  });
+
   it('records activity feedback and never lets paid effects create debt', () => {
     const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
 
@@ -387,6 +446,16 @@ describe('life engine', () => {
 
     expect(next.character.money).toBe(0);
     expect(next.log[0].textKey).toBe('activity.doctorVisit.result');
+  });
+
+  it('tracks once-per-age activity usage and resets it on age up', () => {
+    const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
+
+    const rested = applyActivity(life, { attributes: { health: 2 } }, 'activity.rest.result', 'rest');
+    const aged = ageUp({ ...rested, currentEvent: null }, 'reset-used-activities');
+
+    expect(rested.usedActivitiesThisAge).toEqual(['rest']);
+    expect(aged.usedActivitiesThisAge).toEqual([]);
   });
 
   it('records death log and an existing death cause key for deterministic high-risk death', () => {

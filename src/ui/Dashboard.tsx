@@ -5,42 +5,28 @@ import { StatusBars } from './StatusBars';
 
 interface DashboardProps {
   life: LifeState;
-  onAgeUp(): void;
   onChoose(choiceId: string): void;
 }
 
-export function Dashboard({ life, onAgeUp, onChoose }: DashboardProps) {
+export function Dashboard({ life, onChoose }: DashboardProps) {
   const { character, locale } = life;
-  const hasPendingEvent = life.currentEvent !== null;
 
   return (
-    <div className="screen-stack">
-      <section className="panel profile-panel">
-        <div className="profile-topline">
-          <div>
-            <p className="eyebrow">{translate(locale, 'ui.tab.life')}</p>
-            <h1>{character.name}</h1>
-          </div>
-          <button className="age-button" type="button" disabled={hasPendingEvent} onClick={onAgeUp}>
-            {translate(locale, 'ui.action.ageUp')}
-          </button>
+    <div className="life-dashboard">
+      <section className="life-story-panel">
+        <p className="age-line">
+          {translate(locale, 'ui.label.age')}: {character.age} {translate(locale, 'ui.label.years')}
+        </p>
+        <div className="life-story-copy">
+          {life.log.slice(0, 3).map((entry) => (
+            <p key={entry.id}>{translate(locale, entry.textKey, entry.values)}</p>
+          ))}
         </div>
-        <dl className="quick-stats">
-          <div>
-            <dt>{translate(locale, 'ui.label.age')}</dt>
-            <dd>{character.age}</dd>
-          </div>
-          <div>
-            <dt>{translate(locale, 'ui.label.money')}</dt>
-            <dd>{formatMoney(character.money)}</dd>
-          </div>
-        </dl>
-        <StatusBars attributes={character.attributes} locale={locale} />
       </section>
 
       <EventCard event={life.currentEvent} locale={locale} onChoose={onChoose} />
 
-      <section className="panel">
+      <section className="panel log-panel">
         <p className="panel-title">{translate(locale, 'ui.label.lifeLog')}</p>
         <ol className="log-list">
           {life.log.slice(0, 5).map((entry) => (
@@ -51,10 +37,7 @@ export function Dashboard({ life, onAgeUp, onChoose }: DashboardProps) {
           ))}
         </ol>
       </section>
+      <StatusBars attributes={character.attributes} locale={locale} />
     </div>
   );
-}
-
-function formatMoney(value: number): string {
-  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(value);
 }

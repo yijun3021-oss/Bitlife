@@ -37,6 +37,30 @@ export function DeathSummary({ life, onLocaleChange, onNewLife }: DeathSummaryPr
             </div>
           </dl>
         )}
+        <section className="summary-section">
+          <h2>{translate(locale, 'ui.label.finalRelationships')}</h2>
+          <ul className="summary-list">
+            {life.relationships.map((relationship) => (
+              <li key={relationship.id}>
+                <span>
+                  {relationship.name} ({translate(locale, `relationship.${relationship.type}`)})
+                </span>
+                <strong>{relationship.closeness}%</strong>
+              </li>
+            ))}
+          </ul>
+        </section>
+        <section className="summary-section">
+          <h2>{translate(locale, 'ui.label.timeline')}</h2>
+          <ol className="summary-list summary-list--timeline">
+            {life.log.slice(0, 8).map((entry) => (
+              <li key={entry.id}>
+                <span>{entry.age}</span>
+                <p>{translate(locale, entry.textKey, entry.values)}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
         <button className="primary-button" type="button" onClick={onNewLife}>
           {translate(locale, 'ui.action.newLife')}
         </button>

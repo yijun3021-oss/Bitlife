@@ -5,6 +5,7 @@ export type RelationshipKind = 'mother' | 'father' | 'sibling';
 export const PASS_EVENT_CHOICE_ID = 'pass_event';
 type SchoolStage = 'none' | 'elementary' | 'middle' | 'finished';
 export type AttributeName = keyof Attributes;
+export type RelationshipActionId = 'talk' | 'spend_time' | 'argue';
 
 export interface Attributes {
   happiness: number;
@@ -61,6 +62,9 @@ interface Effect {
     type: RelationshipKind;
     closeness: number;
   };
+  school?: {
+    stress?: number;
+  };
   addStatus?: string;
   removeStatus?: string;
 }
@@ -85,6 +89,10 @@ export interface LifeEvent {
   requires?: {
     schoolStage?: SchoolStage;
     hasJob?: boolean;
+    minAttributes?: Partial<Attributes>;
+    maxAttributes?: Partial<Attributes>;
+    hasStatus?: string;
+    missingStatus?: string;
   };
   choices: LifeEventOption[];
 }
@@ -104,6 +112,7 @@ export interface LifeState {
   school: EducationStatus;
   job: WorkStatus;
   statuses: string[];
+  usedActivitiesThisAge: string[];
   currentEvent: LifeEvent | null;
   log: LifeLogEntry[];
   deathSummary: DeathSummary | null;
