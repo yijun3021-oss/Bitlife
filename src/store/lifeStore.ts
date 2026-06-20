@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { activities } from '../content/activities';
+import { careers } from '../content/catalog/careers';
 import {
   ageUp,
   applyActivity,
@@ -172,7 +173,7 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
     }
 
     if (activityId === 'find_job') {
-      const life = normalizeActionResult(currentLife, findJob(currentLife as unknown as LifeState));
+      const life = bridgeLegacyJobToP1Career(currentLife);
       updateLife(currentLife, life, get().locale, set);
       return;
     }
@@ -195,7 +196,7 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
       return;
     }
 
-    const life = normalizeActionResult(currentLife, findJob(currentLife as unknown as LifeState, jobId));
+    const life = bridgeLegacyJobToP1Career(currentLife, jobId);
     updateLife(currentLife, life, get().locale, set);
   },
 
@@ -410,6 +411,35 @@ function updateLife(
 
 function normalizeActionResult(currentLife: LifeStateV2, life: LifeState | LifeStateV2): LifeStateV2 {
   return life === currentLife ? currentLife : migrateLifeState(life);
+}
+
+function bridgeLegacyJobToP1Career(currentLife: LifeStateV2, jobId?: string): LifeStateV2 {
+  const legacyInput = currentLife as unknown as LifeState;
+  const legacyLife = findJob(legacyInput, jobId);
+  if (legacyLife === legacyInput || legacyLife.job === null) {
+    return currentLife;
+  }
+
+  const careerId = getP1CareerIdForLegacyJob(legacyLife.job.jobId);
+  if (careerId === null) {
+    return currentLife;
+  }
+
+  const careerLife = applyForCareerSystem(currentLife, careerId);
+  if (careerLife === currentLife) {
+    return currentLife;
+  }
+
+  return {
+    ...careerLife,
+    job: legacyLife.job,
+    log: legacyLife.log,
+  };
+}
+
+function getP1CareerIdForLegacyJob(jobId: string): string | null {
+  const careerId = `career.${jobId}`;
+  return careers.some((career) => career.id === careerId) ? careerId : null;
 }
 
 function isLocale(value: unknown): value is Locale {

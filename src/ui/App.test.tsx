@@ -47,6 +47,7 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: /Cashier/ }));
 
     expect(useLifeStore.getState().life?.job).not.toBeNull();
+    expect(useLifeStore.getState().life?.career.currentJobId).toBe('career.cashier');
     expect(screen.queryByText('Cashier')).not.toBeInTheDocument();
   });
 
@@ -194,6 +195,7 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: /Cashier/ }));
 
     expect(useLifeStore.getState().life?.job?.jobId).toBe('cashier');
+    expect(useLifeStore.getState().life?.career.currentJobId).toBe('career.cashier');
     expect(screen.queryByText('Cashier')).not.toBeInTheDocument();
   });
 

@@ -351,7 +351,7 @@ describe('life store', () => {
     expect(useLifeStore.getState().life).toBeNull();
   });
 
-  it('runs find job activity through engine behavior for an eligible adult', () => {
+  it('does not create legacy-only employment from the find job activity', () => {
     const adult = migrateLifeState(ageUpTo(
       createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }),
       18,
@@ -360,8 +360,58 @@ describe('life store', () => {
 
     useLifeStore.getState().runActivity('find_job');
 
-    expect(useLifeStore.getState().life?.job?.jobId).toBe('support_agent');
-    expect(localStorage.getItem(SAVE_KEY)).toContain('support_agent');
+    expect(useLifeStore.getState().life?.job).toBeNull();
+    expect(useLifeStore.getState().life?.career.currentJobId).toBeNull();
+    expect(localStorage.getItem(SAVE_KEY)).toBeNull();
+  });
+
+  it('bridges legacy job choices to P1 careers and pays P1 salary on age up', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(12345);
+    const baseLife = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
+    const adult = migrateLifeState({
+      ...baseLife,
+      character: {
+        ...baseLife.character,
+        age: 18,
+        money: 100,
+      },
+      school: { stage: 'finished', grade: 0, stress: 0 },
+      currentEvent: null,
+    });
+    useLifeStore.setState({ life: adult });
+
+    useLifeStore.getState().chooseJob('cashier');
+
+    const employedLife = useLifeStore.getState().life;
+    expect(employedLife?.job?.jobId).toBe('cashier');
+    expect(employedLife?.career.currentJobId).toBe('career.cashier');
+
+    useLifeStore.getState().ageUpLife();
+
+    expect(useLifeStore.getState().life?.character.money).toBe(18100);
+    expect(useLifeStore.getState().life?.stats.totalIncome).toBe(18000);
+    expect(useLifeStore.getState().life?.stats.workYears).toBe(1);
+  });
+
+  it('does not create legacy-only employment from unmapped legacy job choices', () => {
+    const baseLife = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
+    const adult = migrateLifeState({
+      ...baseLife,
+      character: {
+        ...baseLife.character,
+        age: 18,
+      },
+      school: { stage: 'finished', grade: 0, stress: 0 },
+      currentEvent: null,
+    });
+    useLifeStore.setState({ life: adult });
+
+    useLifeStore.getState().chooseJob('support_agent');
+
+    expect(useLifeStore.getState().life).toBe(adult);
+    expect(useLifeStore.getState().life?.job).toBeNull();
+    expect(useLifeStore.getState().life?.career.currentJobId).toBeNull();
+    expect(localStorage.getItem(SAVE_KEY)).toBeNull();
   });
 
   it('prevents once-per-year activities until the life ages up', () => {
