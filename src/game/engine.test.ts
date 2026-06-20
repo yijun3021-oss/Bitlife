@@ -62,6 +62,11 @@ describe('game primitives', () => {
     expect({} as TypeContract).toBeDefined();
   });
 
+  it('allows P1 relationship kinds', () => {
+    const kinds: RelationshipKind[] = ['friend', 'partner', 'spouse', 'ex', 'child'];
+    expect(kinds).toContain('partner');
+  });
+
   it('clamps attributes into the 0-100 range', () => {
     expect(clampAttribute(-10)).toBe(0);
     expect(clampAttribute(44)).toBe(44);
