@@ -8,6 +8,8 @@ import {
   findJob,
   interactWithRelationship,
 } from '../game/engine';
+import type { LifeStateV2 } from '../game/lifeStateV2';
+import { migrateLifeState } from '../game/migrations';
 import type { Gender, LifeState, Locale, RelationshipActionId } from '../game/types';
 
 export const SAVE_KEY = 'bitliffe.save.v1';
@@ -17,7 +19,13 @@ export type ActiveTab = 'life' | 'relationships' | 'schoolWork' | 'activities' |
 interface SaveRecord {
   version: 1;
   locale: Locale;
-  life: LifeState | null;
+  life: LifeState | LifeStateV2 | null;
+}
+
+interface LoadedSaveRecord {
+  version: 1;
+  locale: Locale;
+  life: LifeStateV2 | null;
 }
 
 interface CreateLifeInput {
@@ -28,8 +36,8 @@ interface CreateLifeInput {
 
 interface LifeStoreState {
   locale: Locale;
-  life: LifeState | null;
-  savedLife: LifeState | null;
+  life: LifeStateV2 | null;
+  savedLife: LifeStateV2 | null;
   activeTab: ActiveTab;
   createLife: (input: CreateLifeInput) => void;
   loadLife: () => void;
@@ -51,11 +59,11 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
   activeTab: 'life',
 
   createLife: (input) => {
-    const life = createNewLife({
+    const life = migrateLifeState(createNewLife({
       ...input,
       locale: get().locale,
       seed: Date.now() % 100000,
-    });
+    }));
     set({ life, savedLife: null, activeTab: 'life' });
     writeSave(get().locale, life);
   },
@@ -73,8 +81,9 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
     if (savedLife === null) {
       return;
     }
-    set({ life: savedLife, savedLife: null, activeTab: 'life' });
-    writeSave(get().locale, savedLife);
+    const life = migrateLifeState(savedLife);
+    set({ life, savedLife: null, activeTab: 'life' });
+    writeSave(get().locale, life);
   },
 
   clearLife: () => {
@@ -100,7 +109,7 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
     if (currentLife === null) {
       return;
     }
-    const life = ageUp(currentLife, Date.now() % 100000);
+    const life = normalizeActionResult(currentLife, ageUp(currentLife, Date.now() % 100000));
     updateLife(currentLife, life, get().locale, set, { activeTab: life.character.alive ? 'life' : 'profile' });
   },
 
@@ -109,7 +118,7 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
     if (currentLife === null) {
       return;
     }
-    const life = applyChoice(currentLife, choiceId);
+    const life = normalizeActionResult(currentLife, applyChoice(currentLife as unknown as LifeState, choiceId));
     updateLife(currentLife, life, get().locale, set);
   },
 
@@ -133,16 +142,19 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
     }
 
     if (activityId === 'find_job') {
-      const life = findJob(currentLife);
+      const life = normalizeActionResult(currentLife, findJob(currentLife as unknown as LifeState));
       updateLife(currentLife, life, get().locale, set);
       return;
     }
 
-    const life = applyActivity(
+    const life = normalizeActionResult(
       currentLife,
-      activity.effects,
-      activity.resultKey,
-      activity.oncePerAge === true ? activity.id : undefined,
+      applyActivity(
+        currentLife as unknown as LifeState,
+        activity.effects,
+        activity.resultKey,
+        activity.oncePerAge === true ? activity.id : undefined,
+      ),
     );
     updateLife(currentLife, life, get().locale, set);
   },
@@ -153,7 +165,7 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
       return;
     }
 
-    const life = findJob(currentLife, jobId);
+    const life = normalizeActionResult(currentLife, findJob(currentLife as unknown as LifeState, jobId));
     updateLife(currentLife, life, get().locale, set);
   },
 
@@ -163,12 +175,15 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
       return;
     }
 
-    const life = interactWithRelationship(currentLife, relationshipId, actionId);
+    const life = normalizeActionResult(
+      currentLife,
+      interactWithRelationship(currentLife as unknown as LifeState, relationshipId, actionId),
+    );
     updateLife(currentLife, life, get().locale, set);
   },
 }));
 
-function readSave(): SaveRecord | null {
+function readSave(): LoadedSaveRecord | null {
   try {
     const rawSave = localStorage.getItem(SAVE_KEY);
     if (rawSave === null) {
@@ -190,8 +205,9 @@ function readSave(): SaveRecord | null {
   }
 }
 
-function writeSave(locale: Locale, life: LifeState | null): void {
-  const save: SaveRecord = { version: 1, locale, life };
+function writeSave(locale: Locale, life: LifeStateV2 | null): void {
+  const normalizedLife = life === null ? null : migrateLifeState(life);
+  const save: SaveRecord = { version: 1, locale, life: normalizedLife };
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(save));
   } catch {
@@ -208,8 +224,8 @@ function removeSave(): void {
 }
 
 function updateLife(
-  currentLife: LifeState,
-  life: LifeState,
+  currentLife: LifeStateV2,
+  life: LifeStateV2,
   locale: Locale,
   set: (partial: Partial<LifeStoreState>) => void,
   extraState: Partial<Pick<LifeStoreState, 'activeTab'>> = {},
@@ -222,11 +238,15 @@ function updateLife(
   writeSave(locale, life);
 }
 
+function normalizeActionResult(currentLife: LifeStateV2, life: LifeState | LifeStateV2): LifeStateV2 {
+  return life === currentLife ? currentLife : migrateLifeState(life);
+}
+
 function isLocale(value: unknown): value is Locale {
   return value === 'zh-CN' || value === 'en-US';
 }
 
-function isSavedLife(value: unknown): value is LifeState | null {
+function isSavedLife(value: unknown): value is LifeState | LifeStateV2 | null {
   if (value === null || value === undefined) {
     return value === null;
   }
@@ -234,9 +254,10 @@ function isSavedLife(value: unknown): value is LifeState | null {
     return false;
   }
 
-  const maybeLife = value as Partial<LifeState>;
+  const maybeLife = value as Partial<LifeState | LifeStateV2>;
+  const version = maybeLife.version;
   return (
-    maybeLife.version === 1 &&
+    (version === 1 || version === 2) &&
     isLocale(maybeLife.locale) &&
     isSavedCharacter(maybeLife.character) &&
     isSavedRelationships(maybeLife.relationships) &&
@@ -246,16 +267,186 @@ function isSavedLife(value: unknown): value is LifeState | null {
     (maybeLife.usedActivitiesThisAge === undefined || isStringArray(maybeLife.usedActivitiesThisAge)) &&
     isSavedCurrentEvent(maybeLife.currentEvent) &&
     isSavedLog(maybeLife.log) &&
-    isSavedDeathSummary(maybeLife.deathSummary)
+    isSavedDeathSummary(maybeLife.deathSummary) &&
+    (version === 1 || isSavedP1Containers(maybeLife))
   );
 }
 
-function normalizeLife(life: LifeState): LifeState {
+function normalizeLife(life: LifeState | LifeStateV2): LifeStateV2 {
   const usedActivitiesThisAge = isStringArray(life.usedActivitiesThisAge) ? life.usedActivitiesThisAge : [];
-  return {
+  return migrateLifeState({
     ...life,
     usedActivitiesThisAge,
-  };
+  });
+}
+
+function isSavedP1Containers(value: Partial<LifeState | LifeStateV2>): boolean {
+  const maybeLife = value as Partial<LifeStateV2>;
+  return (
+    isSavedEducationV2(maybeLife.education) &&
+    isSavedCareerV2(maybeLife.career) &&
+    isSavedFamilyV2(maybeLife.family) &&
+    isSavedAssetsV2(maybeLife.assets) &&
+    isSavedLicensesV2(maybeLife.licenses) &&
+    isSavedHealthV2(maybeLife.health) &&
+    isSavedCriminalRecordV2(maybeLife.criminalRecord) &&
+    isSavedPrisonV2(maybeLife.prison) &&
+    isSavedAchievementsV2(maybeLife.achievements) &&
+    isSavedStatsV2(maybeLife.stats)
+  );
+}
+
+function isSavedEducationV2(value: unknown): value is LifeStateV2['education'] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.level === 'string' &&
+    isNullableString(value.majorId) &&
+    typeof value.grade === 'number' &&
+    typeof value.stress === 'number' &&
+    typeof value.graduated === 'boolean'
+  );
+}
+
+function isSavedCareerV2(value: unknown): value is LifeStateV2['career'] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  return (
+    isNullableString(value.currentJobId) &&
+    typeof value.performance === 'number' &&
+    typeof value.yearsInRole === 'number' &&
+    typeof value.retired === 'boolean'
+  );
+}
+
+function isSavedFamilyV2(value: unknown): value is LifeStateV2['family'] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  return (
+    isNullableString(value.spouseId) &&
+    isStringArray(value.childrenIds) &&
+    typeof value.marriageCount === 'number' &&
+    typeof value.divorceCount === 'number' &&
+    typeof value.adoptionCount === 'number'
+  );
+}
+
+function isSavedAssetsV2(value: unknown): value is LifeStateV2['assets'] {
+  return Array.isArray(value) && value.every(isSavedAssetV2);
+}
+
+function isSavedAssetV2(value: unknown): value is LifeStateV2['assets'][number] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    typeof value.catalogId === 'string' &&
+    typeof value.value === 'number' &&
+    typeof value.purchaseAge === 'number'
+  );
+}
+
+function isSavedLicensesV2(value: unknown): value is LifeStateV2['licenses'] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  return typeof value.driving === 'boolean' && typeof value.boat === 'boolean' && typeof value.flight === 'boolean';
+}
+
+function isSavedHealthV2(value: unknown): value is LifeStateV2['health'] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  return isStringArray(value.diseases) && Array.isArray(value.treatmentHistory) && value.treatmentHistory.every(isSavedTreatmentRecord);
+}
+
+function isSavedTreatmentRecord(value: unknown): value is LifeStateV2['health']['treatmentHistory'][number] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.diseaseId === 'string' &&
+    typeof value.treatmentId === 'string' &&
+    typeof value.age === 'number' &&
+    typeof value.recovered === 'boolean'
+  );
+}
+
+function isSavedCriminalRecordV2(value: unknown): value is LifeStateV2['criminalRecord'] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  return Array.isArray(value.arrests) && value.arrests.every(isSavedArrestRecord) &&
+    Array.isArray(value.convictions) && value.convictions.every(isSavedConvictionRecord);
+}
+
+function isSavedArrestRecord(value: unknown): value is LifeStateV2['criminalRecord']['arrests'][number] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  return typeof value.id === 'string' && typeof value.crimeId === 'string' && typeof value.age === 'number';
+}
+
+function isSavedConvictionRecord(value: unknown): value is LifeStateV2['criminalRecord']['convictions'][number] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    typeof value.crimeId === 'string' &&
+    typeof value.age === 'number' &&
+    typeof value.sentenceYears === 'number'
+  );
+}
+
+function isSavedPrisonV2(value: unknown): value is LifeStateV2['prison'] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.incarcerated === 'boolean' &&
+    typeof value.remainingYears === 'number' &&
+    typeof value.behavior === 'number' &&
+    typeof value.appealAvailable === 'boolean' &&
+    typeof value.paroleEligible === 'boolean'
+  );
+}
+
+function isSavedAchievementsV2(value: unknown): value is LifeStateV2['achievements'] {
+  return isPlainObject(value) && isStringArray(value.unlocked);
+}
+
+function isSavedStatsV2(value: unknown): value is LifeStateV2['stats'] {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.totalIncome === 'number' &&
+    typeof value.workYears === 'number' &&
+    typeof value.crimesSucceeded === 'number' &&
+    typeof value.prisonYears === 'number' &&
+    typeof value.diseasesRecovered === 'number'
+  );
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === 'string';
 }
 
 function isSavedCharacter(value: unknown): value is LifeState['character'] {
