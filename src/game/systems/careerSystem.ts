@@ -1,5 +1,5 @@
 import { careers, type CareerCatalogItem } from '../../content/catalog/careers';
-import { clampAttribute } from '../engine';
+import { clampAttribute } from '../attributes';
 import type { LifeStateV2 } from '../lifeStateV2';
 
 function educationMeetsRequirement(life: LifeStateV2, career: CareerCatalogItem): boolean {

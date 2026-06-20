@@ -1,5 +1,15 @@
+import { careers } from '../content/catalog/careers';
 import type { LifeState } from './types';
 import type { LifeStateV2 } from './lifeStateV2';
+
+function migrateLegacyJobId(jobId: string | undefined): string | null {
+  if (jobId === undefined) {
+    return null;
+  }
+
+  const p1JobId = `career.${jobId}`;
+  return careers.some((career) => career.id === p1JobId) ? p1JobId : null;
+}
 
 export function migrateLifeState(life: LifeState | LifeStateV2): LifeStateV2 {
   if (life.version === 2) {
@@ -17,7 +27,7 @@ export function migrateLifeState(life: LifeState | LifeStateV2): LifeStateV2 {
       graduated: life.school.stage === 'finished',
     },
     career: {
-      currentJobId: life.job?.jobId ?? null,
+      currentJobId: migrateLegacyJobId(life.job?.jobId),
       performance: 50,
       yearsInRole: life.job?.years ?? 0,
       retired: false,

@@ -470,6 +470,25 @@ describe('life engine', () => {
     expect(result.career.yearsInRole).toBe(1);
   });
 
+  it('does not double settle legacy job salary for v2 lives with P1 careers', () => {
+    const base = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'us', locale: 'en-US', seed: 45 }));
+    const employed: LifeStateV2 = {
+      ...base,
+      currentEvent: null,
+      character: { ...base.character, age: 22, money: 1000 },
+      job: { jobId: 'cashier', titleKey: 'job.cashier.title', salary: 18000, years: 4 },
+      career: { currentJobId: 'career.software_analyst', performance: 50, yearsInRole: 0, retired: false },
+      education: { ...base.education, level: 'university', graduated: true },
+    };
+
+    const result = ageUp(employed, 'no-double-salary');
+
+    expect(result.character.money).toBe(63000);
+    expect(result.job?.years).toBe(4);
+    expect(result.career.yearsInRole).toBe(1);
+    expect(result.stats.totalIncome).toBe(62000);
+  });
+
   it('records death log and an existing death cause key for deterministic high-risk death', () => {
     const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
     const highRisk: LifeState = {

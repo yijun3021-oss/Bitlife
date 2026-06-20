@@ -1,5 +1,5 @@
 import { educationPrograms } from '../../content/catalog/education';
-import { clampAttribute } from '../engine';
+import { clampAttribute } from '../attributes';
 import type { LifeStateV2 } from '../lifeStateV2';
 
 export function enrollInProgram(life: LifeStateV2, programId: string): LifeStateV2 {

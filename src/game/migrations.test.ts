@@ -40,7 +40,7 @@ describe('life state migrations', () => {
       graduated: true,
     });
     expect(migrated.career).toEqual({
-      currentJobId: employed.job?.jobId,
+      currentJobId: null,
       performance: 50,
       yearsInRole: employed.job?.years,
       retired: false,
@@ -77,6 +77,56 @@ describe('life state migrations', () => {
     expect(migrated.currentEvent).toEqual(employed.currentEvent);
     expect(migrated.log).toEqual(employed.log);
     expect(migrated.school).toEqual(employed.school);
+    expect(migrated.job).toEqual(employed.job);
+  });
+
+  it('maps compatible legacy v1 jobs to P1 career ids during migration', () => {
+    const born = createNewLife({
+      name: 'Mina Lin',
+      gender: 'female',
+      countryId: 'cn',
+      locale: 'zh-CN',
+      seed: 13,
+    });
+    const adult = {
+      ...born,
+      character: {
+        ...born.character,
+        age: 18,
+        attributes: { ...born.character.attributes, smarts: 95 },
+      },
+      currentEvent: null,
+    };
+    const employed = findJob(adult, 'cashier');
+
+    const migrated = migrateLifeState(employed);
+
+    expect(migrated.career.currentJobId).toBe('career.cashier');
+    expect(migrated.job).toEqual(employed.job);
+  });
+
+  it('leaves P1 career open when a legacy v1 job has no P1 catalog match', () => {
+    const born = createNewLife({
+      name: 'Mina Lin',
+      gender: 'female',
+      countryId: 'cn',
+      locale: 'zh-CN',
+      seed: 14,
+    });
+    const adult = {
+      ...born,
+      character: {
+        ...born.character,
+        age: 18,
+        attributes: { ...born.character.attributes, smarts: 95 },
+      },
+      currentEvent: null,
+    };
+    const employed = findJob(adult, 'support_agent');
+
+    const migrated = migrateLifeState(employed);
+
+    expect(migrated.career.currentJobId).toBeNull();
     expect(migrated.job).toEqual(employed.job);
   });
 

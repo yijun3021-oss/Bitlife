@@ -1,6 +1,7 @@
 import { events } from '../content/events';
 import { jobs } from '../content/jobs';
 import { familyNames, givenNames } from '../content/names';
+import { clampAttribute } from './attributes';
 import { createSeededRandom, pickWeighted, type RandomSource } from './random';
 import { settleCareerYear } from './systems/careerSystem';
 import { settleEducationYear } from './systems/educationSystem';
@@ -32,6 +33,8 @@ interface NewLifeInput {
 type ChoiceEffects = LifeEventOption['effects'];
 type GameLifeState = LifeState | LifeStateV2;
 
+export { clampAttribute };
+
 const relationshipInteractions: Record<
   RelationshipActionId,
   { closeness: number; happiness: number; action: string }
@@ -40,10 +43,6 @@ const relationshipInteractions: Record<
   spend_time: { closeness: 5, happiness: 2, action: 'spent time with' },
   argue: { closeness: -6, happiness: -1, action: 'argued with' },
 };
-
-export function clampAttribute(value: number): number {
-  return Math.max(0, Math.min(100, Math.round(value)));
-}
 
 export function getLifeStage(age: number): LifeStage {
   if (age <= 2) {
@@ -196,7 +195,8 @@ export function ageUp(
   }
 
   const nextAge = life.character.age + 1;
-  const salary = life.job?.salary ?? 0;
+  const shouldSettleLegacyJob = life.version === 1;
+  const salary = shouldSettleLegacyJob ? life.job?.salary ?? 0 : 0;
   const agedLife: GameLifeState = {
     ...life,
     character: {
@@ -205,7 +205,7 @@ export function ageUp(
       money: life.character.money + salary,
     },
     school: getSchoolState(nextAge, life.school),
-    job: life.job === null ? null : { ...life.job, years: life.job.years + 1 },
+    job: shouldSettleLegacyJob && life.job !== null ? { ...life.job, years: life.job.years + 1 } : life.job,
     usedActivitiesThisAge: [],
     currentEvent: null,
     log: [
