@@ -3,6 +3,8 @@ dist/
 .worktrees/
 wiki_dump/
 wiki_dump_test/
+data/wiki-index/
+data/wiki-extracts/
 *.tsbuildinfo
 vite.config.d.ts
 vite.config.js
