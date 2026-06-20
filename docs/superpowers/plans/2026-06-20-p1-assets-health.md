@@ -306,13 +306,14 @@ Add to `src/game/engine.test.ts`:
 ```ts
 import { buyAsset } from './systems/assetSystem';
 import { contractDisease } from './systems/healthSystem';
+import type { LifeStateV2 } from './lifeStateV2';
 
 it('settles P1 assets and health during age up for v2 lives', () => {
   const base = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'us', locale: 'en-US', seed: 62 }));
   const adult = { ...base, currentEvent: null, character: { ...base.character, age: 35, money: 100000 } };
   const withAsset = buyAsset(adult, 'asset.used_compact');
   const sick = contractDisease(withAsset, 'disease.common_cold');
-  const result = ageUp(sick, 'assets-health-engine');
+  const result: LifeStateV2 = ageUp(sick, 'assets-health-engine');
   expect(result.assets[0].value).toBeLessThan(sick.assets[0].value);
   expect(result.character.attributes.health).toBeLessThan(sick.character.attributes.health);
 });
@@ -327,9 +328,30 @@ $env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
 & 'C:\Program Files\nodejs\npm.cmd' test -- src/game/engine.test.ts
 ```
 
-Expected: FAIL until `ageUp` calls asset and health settlement.
+Expected: FAIL until `ageUp` exposes a `LifeStateV2` overload and calls asset and health settlement.
 
-- [ ] **Step 3: Wire yearly settlement**
+- [ ] **Step 3: Update public ageUp typing for v1 and v2 lives**
+
+In `src/game/engine.ts`, import `LifeStateV2` if it is not already imported:
+
+```ts
+import type { LifeStateV2 } from './lifeStateV2';
+```
+
+Ensure the public `ageUp` function has v1 and v2 overloads:
+
+```ts
+export function ageUp(life: LifeStateV2, seed?: string | number): LifeStateV2;
+export function ageUp(life: LifeState, seed?: string | number): LifeState;
+export function ageUp(
+  life: LifeState | LifeStateV2,
+  seed: string | number = `${life.character.id}:age`,
+): LifeState | LifeStateV2 {
+```
+
+If another system plan already added these overloads, verify the overloads remain intact and continue with the settlement hook.
+
+- [ ] **Step 4: Wire yearly settlement**
 
 In `src/game/engine.ts`, import:
 
@@ -349,7 +371,7 @@ const settledLife =
 
 If previous subsystem hooks already exist, preserve them and use this order: education, career, assets, health, relationships, family.
 
-- [ ] **Step 4: Run tests and build**
+- [ ] **Step 5: Run tests and build**
 
 Run:
 
@@ -361,7 +383,7 @@ $env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
 
 Expected: PASS and production build succeeds.
 
-- [ ] **Step 5: Commit engine hooks**
+- [ ] **Step 6: Commit engine hooks**
 
 Run:
 

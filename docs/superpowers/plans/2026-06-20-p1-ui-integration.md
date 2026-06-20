@@ -24,6 +24,7 @@ This plan starts only after those systems compile. Do not modify system rule log
 ## Files
 
 - Modify: `src/store/lifeStore.ts`
+- Create: `src/store/lifeStore.p1-migration.test.ts`
 - Create: `src/store/lifeStore.p1-actions.test.ts`
 - Modify: `src/App.tsx`
 - Modify: `src/ui/SchoolWorkPanel.tsx`
@@ -42,7 +43,186 @@ This plan starts only after those systems compile. Do not modify system rule log
 - Modify: `src/i18n/locales/zh-CN.ts`
 - Modify: `src/styles.css`
 
-## Task 1: Store Actions for Existing P1 Systems
+## Task 1: Store Migration and LifeStateV2 Typing
+
+**Files:**
+- Modify: `src/store/lifeStore.ts`
+- Create: `src/store/lifeStore.p1-migration.test.ts`
+
+- [ ] **Step 1: Write failing store migration tests**
+
+Create `src/store/lifeStore.p1-migration.test.ts`:
+
+```ts
+import { beforeEach, describe, expect, it } from 'vitest';
+import { createNewLife } from '../game/engine';
+import type { LifeStateV2 } from '../game/lifeStateV2';
+import { SAVE_KEY, useLifeStore } from './lifeStore';
+
+function savedV1Json() {
+  const life = createNewLife({ name: 'Saved Person', gender: 'female', countryId: 'us', locale: 'en-US', seed: 111 });
+  return JSON.stringify({ version: 1, locale: 'en-US', life });
+}
+
+describe('p1 store migration', () => {
+  beforeEach(() => {
+    localStorage.removeItem(SAVE_KEY);
+    useLifeStore.setState(useLifeStore.getInitialState(), true);
+  });
+
+  it('creates new active lives as LifeStateV2', () => {
+    useLifeStore.getState().createLife({ name: 'Mina Lin', gender: 'female', countryId: 'us' });
+    const life: LifeStateV2 | null = useLifeStore.getState().life;
+    expect(life?.version).toBe(2);
+    expect(life?.career.currentJobId).toBeNull();
+  });
+
+  it('migrates loaded saved lives before continueLife exposes them as active', () => {
+    localStorage.setItem(SAVE_KEY, savedV1Json());
+    useLifeStore.getState().loadLife();
+    expect(useLifeStore.getState().savedLife?.version).toBe(2);
+    useLifeStore.getState().continueLife();
+    const life: LifeStateV2 | null = useLifeStore.getState().life;
+    expect(life?.version).toBe(2);
+    expect(life?.assets).toEqual([]);
+  });
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run:
+
+```powershell
+$env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
+& 'C:\Program Files\nodejs\npm.cmd' test -- src/store/lifeStore.p1-migration.test.ts
+```
+
+Expected: FAIL because the store is still typed around v1 `LifeState` and does not normalize active or saved lives through `migrateLifeState`.
+
+- [ ] **Step 3: Update store state types to LifeStateV2**
+
+Modify `src/store/lifeStore.ts` imports:
+
+```ts
+import type { LifeStateV2 } from '../game/lifeStateV2';
+import { migrateLifeState } from '../game/migrations';
+import type { Gender, LifeState, Locale, RelationshipActionId } from '../game/types';
+```
+
+Update store and save types so active state is v2 after normalization:
+
+```ts
+interface SaveRecord {
+  version: 1;
+  locale: Locale;
+  life: LifeState | LifeStateV2 | null;
+}
+
+interface LifeStoreState {
+  locale: Locale;
+  life: LifeStateV2 | null;
+  savedLife: LifeStateV2 | null;
+  activeTab: ActiveTab;
+}
+```
+
+Keep `LifeState` in `SaveRecord` only as accepted legacy input from localStorage.
+
+- [ ] **Step 4: Normalize create, load, continue, and save paths**
+
+In `src/store/lifeStore.ts`, use `migrateLifeState` in every path that creates, loads, activates, or saves a life:
+
+```ts
+createLife: (input) => {
+  const life = migrateLifeState(createNewLife({
+    ...input,
+    locale: get().locale,
+    seed: Date.now() % 100000,
+  }));
+  set({ life, savedLife: null, activeTab: 'life' });
+  writeSave(get().locale, life);
+},
+```
+
+Normalize loaded records:
+
+```ts
+return {
+  version: 1,
+  locale: save.locale,
+  life: save.life === null ? null : normalizeLife(save.life),
+};
+```
+
+Normalize before activating a saved life:
+
+```ts
+const life = migrateLifeState(savedLife);
+set({ life, savedLife: null, activeTab: 'life' });
+writeSave(get().locale, life);
+```
+
+Update helper signatures:
+
+```ts
+function writeSave(locale: Locale, life: LifeStateV2 | null): void
+function updateLife(
+  currentLife: LifeStateV2,
+  life: LifeStateV2,
+  locale: Locale,
+  set: (partial: Partial<LifeStoreState>) => void,
+  extraState: Partial<Pick<LifeStoreState, 'activeTab'>> = {},
+): void
+function normalizeLife(life: LifeState | LifeStateV2): LifeStateV2
+```
+
+Implement `writeSave` so the saved payload is normalized immediately before serialization:
+
+```ts
+function writeSave(locale: Locale, life: LifeStateV2 | null): void {
+  const normalizedLife = life === null ? null : migrateLifeState(life);
+  const save: SaveRecord = { version: 1, locale, life: normalizedLife };
+  localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+}
+```
+
+Keep the existing `try/catch` around localStorage writes. Implement `normalizeLife` so it preserves the existing `usedActivitiesThisAge` repair and then returns `migrateLifeState(repairedLife)`.
+
+- [ ] **Step 5: Accept v1 and v2 saves during validation**
+
+Update `isSavedLife` so it accepts `version === 1` legacy lives and `version === 2` migrated lives. The v2 branch must verify the required P1 containers before returning true:
+
+```ts
+const version = (value as { version?: unknown }).version;
+if (version !== 1 && version !== 2) {
+  return false;
+}
+```
+
+For v2 saves, check at least `education`, `career`, `family`, `assets`, `licenses`, `health`, `criminalRecord`, `prison`, `achievements`, and `stats` are plain objects or arrays with the expected top-level shapes. Keep detailed nested validation modest and deterministic so older v1 saves still migrate.
+
+- [ ] **Step 6: Run migration tests**
+
+Run:
+
+```powershell
+$env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
+& 'C:\Program Files\nodejs\npm.cmd' test -- src/store/lifeStore.test.ts src/store/lifeStore.p1-migration.test.ts
+```
+
+Expected: PASS.
+
+- [ ] **Step 7: Commit store migration**
+
+Run:
+
+```powershell
+& 'C:\Users\OseasyVM\AppData\Local\Programs\Git\cmd\git.exe' add src/store/lifeStore.ts src/store/lifeStore.p1-migration.test.ts
+& 'C:\Users\OseasyVM\AppData\Local\Programs\Git\cmd\git.exe' commit -m "feat: migrate store lives to p1 state"
+```
+
+## Task 2: Store Actions for Existing P1 Systems
 
 **Files:**
 - Modify: `src/store/lifeStore.ts`
@@ -60,6 +240,7 @@ describe('p1 store actions', () => {
   beforeEach(() => {
     localStorage.removeItem(SAVE_KEY);
     useLifeStore.setState(useLifeStore.getInitialState(), true);
+    useLifeStore.getState().setLocale('en-US');
     useLifeStore.getState().createLife({ name: 'Mina Lin', gender: 'female', countryId: 'us' });
     useLifeStore.setState((state) => ({
       life: state.life === null ? null : { ...state.life, character: { ...state.life.character, age: 25, money: 100000, attributes: { ...state.life.character.attributes, smarts: 80 } } },
@@ -98,7 +279,7 @@ $env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
 & 'C:\Program Files\nodejs\npm.cmd' test -- src/store/lifeStore.p1-actions.test.ts
 ```
 
-Expected: FAIL because P1 store actions are not defined.
+Expected: FAIL because P1 store actions are not defined. The migration test from Task 1 must pass before continuing so these actions receive `LifeStateV2`, not v1 `LifeState`.
 
 - [ ] **Step 3: Add typed store actions**
 
@@ -140,6 +321,8 @@ Each action should follow the existing store mutation pattern:
 enrollInProgram: (programId) => set((state) => state.life === null ? state : { life: enrollInProgram(state.life, programId) }),
 ```
 
+Because `LifeStoreState.life` is now `LifeStateV2 | null`, each P1 action passes a `LifeStateV2` into its system function without casts.
+
 Use `Math.random()` only as the default roll in store action wrappers; keep deterministic rolls available for tests.
 
 - [ ] **Step 4: Run store tests**
@@ -148,7 +331,7 @@ Run:
 
 ```powershell
 $env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
-& 'C:\Program Files\nodejs\npm.cmd' test -- src/store/lifeStore.test.ts src/store/lifeStore.p1-actions.test.ts
+& 'C:\Program Files\nodejs\npm.cmd' test -- src/store/lifeStore.test.ts src/store/lifeStore.p1-migration.test.ts src/store/lifeStore.p1-actions.test.ts
 ```
 
 Expected: PASS.
@@ -162,7 +345,7 @@ Run:
 & 'C:\Users\OseasyVM\AppData\Local\Programs\Git\cmd\git.exe' commit -m "feat: add p1 store actions"
 ```
 
-## Task 2: P1 Panels and App Wiring
+## Task 3: P1 Panels and App Wiring
 
 **Files:**
 - Modify: `src/App.tsx`
@@ -194,6 +377,7 @@ describe('P1 app integration', () => {
   beforeEach(() => {
     localStorage.removeItem(SAVE_KEY);
     useLifeStore.setState(useLifeStore.getInitialState(), true);
+    useLifeStore.getState().setLocale('en-US');
   });
 
   it('shows P1 panels after life creation', async () => {
@@ -274,7 +458,7 @@ Run:
 
 ```powershell
 $env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
-& 'C:\Program Files\nodejs\npm.cmd' test -- src/ui/App.test.tsx src/ui/App.p1.test.tsx
+& 'C:\Program Files\nodejs\npm.cmd' test -- src/ui/App.test.tsx src/ui/App.p1.test.tsx src/store/lifeStore.p1-migration.test.ts
 & 'C:\Program Files\nodejs\npm.cmd' run build
 ```
 
@@ -289,7 +473,7 @@ Run:
 & 'C:\Users\OseasyVM\AppData\Local\Programs\Git\cmd\git.exe' commit -m "feat: wire p1 mobile panels"
 ```
 
-## Task 3: Locale Labels for P1 UI
+## Task 4: Locale Labels for P1 UI
 
 **Files:**
 - Modify: `src/i18n/locales/en-US.ts`
@@ -341,7 +525,7 @@ Run:
 
 ```powershell
 $env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
-& 'C:\Program Files\nodejs\npm.cmd' test -- src/i18n/i18n.test.ts src/ui/App.test.tsx src/ui/App.p1.test.tsx src/store/lifeStore.p1-actions.test.ts
+& 'C:\Program Files\nodejs\npm.cmd' test -- src/i18n/i18n.test.ts src/ui/App.test.tsx src/ui/App.p1.test.tsx src/store/lifeStore.p1-migration.test.ts src/store/lifeStore.p1-actions.test.ts
 & 'C:\Program Files\nodejs\npm.cmd' run build
 ```
 
@@ -359,5 +543,5 @@ Run:
 ## Self-Review
 
 - Scope starts after system modules exist and avoids changing pure game rules.
-- Store actions, panels, styles, and locale labels are covered by separate commits.
+- Store migration, store actions, panels, styles, and locale labels are covered by separate commits.
 - This plan does not require generated Wiki data and does not commit raw content dumps.

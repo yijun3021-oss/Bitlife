@@ -367,12 +367,13 @@ Add to `src/game/engine.test.ts`:
 
 ```ts
 import { addRelationship } from './systems/relationshipSystem';
+import type { LifeStateV2 } from './lifeStateV2';
 
 it('settles P1 relationships during age up for v2 lives', () => {
   const base = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'us', locale: 'en-US', seed: 52 }));
   const adult = { ...base, currentEvent: null, character: { ...base.character, age: 25 } };
   const withFriend = addRelationship(adult, { id: 'rel_alex', name: 'Alex Park', type: 'friend', closeness: 80 });
-  const result = ageUp(withFriend, 'relationship-family-engine');
+  const result: LifeStateV2 = ageUp(withFriend, 'relationship-family-engine');
   expect(result.relationships.find((item) => item.id === 'rel_alex')?.closeness).toBe(78);
 });
 ```
@@ -386,9 +387,30 @@ $env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
 & 'C:\Program Files\nodejs\npm.cmd' test -- src/game/engine.test.ts
 ```
 
-Expected: FAIL until relationship settlement is called from `ageUp`.
+Expected: FAIL until `ageUp` exposes a `LifeStateV2` overload and relationship settlement is called from `ageUp`.
 
-- [ ] **Step 3: Wire yearly settlement**
+- [ ] **Step 3: Update public ageUp typing for v1 and v2 lives**
+
+In `src/game/engine.ts`, import `LifeStateV2` if it is not already imported:
+
+```ts
+import type { LifeStateV2 } from './lifeStateV2';
+```
+
+Ensure the public `ageUp` function has v1 and v2 overloads:
+
+```ts
+export function ageUp(life: LifeStateV2, seed?: string | number): LifeStateV2;
+export function ageUp(life: LifeState, seed?: string | number): LifeState;
+export function ageUp(
+  life: LifeState | LifeStateV2,
+  seed: string | number = `${life.character.id}:age`,
+): LifeState | LifeStateV2 {
+```
+
+If the education/career plan already added these overloads, verify they are still present and do not add duplicates.
+
+- [ ] **Step 4: Wire yearly settlement**
 
 In `src/game/engine.ts`, import:
 
@@ -408,7 +430,7 @@ const settledLife =
 
 If education/career hooks are already present, compose all existing hooks in this order: education, career, relationship, family.
 
-- [ ] **Step 4: Run tests and build**
+- [ ] **Step 5: Run tests and build**
 
 Run:
 
@@ -420,7 +442,7 @@ $env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
 
 Expected: PASS and production build succeeds.
 
-- [ ] **Step 5: Commit engine hooks**
+- [ ] **Step 6: Commit engine hooks**
 
 Run:
 

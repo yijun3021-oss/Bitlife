@@ -367,12 +367,13 @@ Add to `src/game/engine.test.ts`:
 
 ```ts
 import { attemptCrime } from './systems/crimeSystem';
+import type { LifeStateV2 } from './lifeStateV2';
 
 it('settles prison and unlocks achievements during age up for v2 lives', () => {
   const base = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'us', locale: 'en-US', seed: 72 }));
   const adult = { ...base, currentEvent: null, character: { ...base.character, age: 25 } };
   const prisoner = attemptCrime(adult, 'crime.bank_robbery', 0.99);
-  const result = ageUp(prisoner, 'crime-prison-achievement-engine');
+  const result: LifeStateV2 = ageUp(prisoner, 'crime-prison-achievement-engine');
   expect(result.stats.prisonYears).toBe(1);
   expect(result.achievements.unlocked).toContain('achievement.second_chance');
 });
@@ -387,9 +388,30 @@ $env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
 & 'C:\Program Files\nodejs\npm.cmd' test -- src/game/engine.test.ts
 ```
 
-Expected: FAIL until `ageUp` calls prison settlement and achievement unlocking.
+Expected: FAIL until `ageUp` exposes a `LifeStateV2` overload and calls prison settlement and achievement unlocking.
 
-- [ ] **Step 3: Wire yearly settlement and unlocks**
+- [ ] **Step 3: Update public ageUp typing for v1 and v2 lives**
+
+In `src/game/engine.ts`, import `LifeStateV2` if it is not already imported:
+
+```ts
+import type { LifeStateV2 } from './lifeStateV2';
+```
+
+Ensure the public `ageUp` function has v1 and v2 overloads:
+
+```ts
+export function ageUp(life: LifeStateV2, seed?: string | number): LifeStateV2;
+export function ageUp(life: LifeState, seed?: string | number): LifeState;
+export function ageUp(
+  life: LifeState | LifeStateV2,
+  seed: string | number = `${life.character.id}:age`,
+): LifeState | LifeStateV2 {
+```
+
+If another system plan already added these overloads, verify the overloads remain intact and continue with the settlement hook.
+
+- [ ] **Step 4: Wire yearly settlement and unlocks**
 
 In `src/game/engine.ts`, import:
 
@@ -409,7 +431,7 @@ const settledLife =
 
 If previous subsystem hooks already exist, preserve them and use this order: education, career, assets, health, prison, relationships, family, achievements.
 
-- [ ] **Step 4: Run tests and build**
+- [ ] **Step 5: Run tests and build**
 
 Run:
 
@@ -421,7 +443,7 @@ $env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
 
 Expected: PASS and production build succeeds.
 
-- [ ] **Step 5: Commit engine hooks**
+- [ ] **Step 6: Commit engine hooks**
 
 Run:
 

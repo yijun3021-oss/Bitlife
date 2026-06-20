@@ -378,12 +378,13 @@ Add this test to `src/game/engine.test.ts`:
 import { migrateLifeState } from './migrations';
 import { applyForCareer } from './systems/careerSystem';
 import { ageUp } from './engine';
+import type { LifeStateV2 } from './lifeStateV2';
 
 it('settles P1 education and career during age up for v2 lives', () => {
   const base = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'us', locale: 'en-US', seed: 44 }));
   const adult = { ...base, currentEvent: null, character: { ...base.character, age: 22, attributes: { ...base.character.attributes, smarts: 75 } }, education: { ...base.education, level: 'university' as const, graduated: true } };
   const employed = applyForCareer(adult, 'career.cashier');
-  const result = ageUp(employed, 'education-career-engine');
+  const result: LifeStateV2 = ageUp(employed, 'education-career-engine');
   expect(result.character.money).toBeGreaterThan(employed.character.money);
   expect(result.career.yearsInRole).toBe(1);
 });
@@ -398,16 +399,36 @@ $env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
 & 'C:\Program Files\nodejs\npm.cmd' test -- src/game/engine.test.ts
 ```
 
-Expected: FAIL because `ageUp` does not call P1 education and career settlement.
+Expected: FAIL because `ageUp` does not yet expose a `LifeStateV2` overload and does not call P1 education and career settlement.
 
-- [ ] **Step 3: Modify engine orchestration for this subsystem only**
+- [ ] **Step 3: Update public ageUp typing for v1 and v2 lives**
+
+In `src/game/engine.ts`, import `LifeStateV2` and change the public `ageUp` signature to overload v1 and v2 state:
+
+```ts
+import type { LifeStateV2 } from './lifeStateV2';
+```
+
+Replace the current function declaration with overloads plus a union implementation:
+
+```ts
+export function ageUp(life: LifeStateV2, seed?: string | number): LifeStateV2;
+export function ageUp(life: LifeState, seed?: string | number): LifeState;
+export function ageUp(
+  life: LifeState | LifeStateV2,
+  seed: string | number = `${life.character.id}:age`,
+): LifeState | LifeStateV2 {
+```
+
+Keep existing v1 callers typed as `LifeState`, while tests and store code that pass `LifeStateV2` receive `LifeStateV2`.
+
+- [ ] **Step 4: Modify engine orchestration for this subsystem only**
 
 In `src/game/engine.ts`, import the system functions:
 
 ```ts
 import { settleCareerYear } from './systems/careerSystem';
 import { settleEducationYear } from './systems/educationSystem';
-import type { LifeStateV2 } from './lifeStateV2';
 ```
 
 Inside `ageUp`, after the existing v1 age/school/job update and before death checking, normalize v2 lives through only these settlement functions:
@@ -422,7 +443,7 @@ const deathCheck = maybeDie(settledLife, createSeededRandom(`${String(seed)}:dea
 
 Keep the rest of `ageUp` unchanged.
 
-- [ ] **Step 4: Run targeted and full game tests**
+- [ ] **Step 5: Run targeted and full game tests**
 
 Run:
 
@@ -434,7 +455,7 @@ $env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
 
 Expected: PASS and production build succeeds.
 
-- [ ] **Step 5: Commit engine hook**
+- [ ] **Step 6: Commit engine hook**
 
 Run:
 
