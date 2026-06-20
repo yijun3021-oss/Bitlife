@@ -410,7 +410,74 @@ export function ageUp(
 
 If the education/career plan already added these overloads, verify they are still present and do not add duplicates.
 
-- [ ] **Step 4: Wire yearly settlement**
+- [ ] **Step 4: Update ageUp internals to preserve v2 containers**
+
+In `src/game/engine.ts`, add or reuse this local union type near the top of the file:
+
+```ts
+type GameLifeState = LifeState | LifeStateV2;
+```
+
+Update event selection helpers to accept v2-compatible state:
+
+```ts
+export function pickNextEvent(life: GameLifeState, seed: string | number = `${life.character.id}:${life.character.age}`): LifeEvent | null {
+```
+
+```ts
+export function eventMatchesLife(event: LifeEvent, life: GameLifeState): boolean {
+```
+
+Inside `ageUp`, type the yearly object as the union. Do not annotate it as `LifeState`, because that makes TypeScript forget `family`, `assets`, `health`, `criminalRecord`, `prison`, `achievements`, and `stats`:
+
+```ts
+const agedLife: GameLifeState = {
+  ...life,
+  character: {
+    ...life.character,
+    age: nextAge,
+    money: life.character.money + salary,
+  },
+  school: getSchoolState(nextAge, life.school),
+  job: life.job === null ? null : { ...life.job, years: life.job.years + 1 },
+  usedActivitiesThisAge: [],
+  currentEvent: null,
+  log: [
+    ...(salary > 0 ? [makeLogEntry(nextAge, 'log.salary', life.log.length + 1, { amount: salary })] : []),
+    makeLogEntry(nextAge, 'log.ageUp', life.log.length, { name: life.character.name, age: nextAge }),
+    ...life.log,
+  ],
+};
+```
+
+Update `maybeDie` to accept and return the same state version:
+
+```ts
+function maybeDie<TLife extends GameLifeState>(life: TLife, random: RandomSource): TLife {
+  const risk = calculateDeathRisk(life.character.age, life.character.attributes.health, life.statuses);
+  if (random.next() >= risk) {
+    return life;
+  }
+
+  const deathLog = makeLogEntry(life.character.age, 'log.death', life.log.length, { age: life.character.age });
+  return {
+    ...life,
+    character: { ...life.character, alive: false },
+    currentEvent: null,
+    deathSummary: {
+      age: life.character.age,
+      causeKey: getDeathCauseKey(life),
+      netWorth: life.character.money,
+      logKey: 'log.death',
+    },
+    log: [deathLog, ...life.log],
+  } as TLife;
+}
+```
+
+The return cast is limited to preserving the input state version after changing shared fields; it must not omit v2 containers.
+
+- [ ] **Step 5: Wire yearly settlement**
 
 In `src/game/engine.ts`, import:
 
@@ -422,7 +489,7 @@ import { settleRelationshipYear } from './systems/relationshipSystem';
 In the v2 branch of `ageUp`, include only these sibling-plan hooks after education/career hooks if those already exist:
 
 ```ts
-const settledLife =
+const settledLife: GameLifeState =
   agedLife.version === 2
     ? settleFamilyYear(settleRelationshipYear(agedLife as LifeStateV2))
     : agedLife;
@@ -430,7 +497,7 @@ const settledLife =
 
 If education/career hooks are already present, compose all existing hooks in this order: education, career, relationship, family.
 
-- [ ] **Step 5: Run tests and build**
+- [ ] **Step 6: Run tests and build**
 
 Run:
 
@@ -442,7 +509,7 @@ $env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
 
 Expected: PASS and production build succeeds.
 
-- [ ] **Step 6: Commit engine hooks**
+- [ ] **Step 7: Commit engine hooks**
 
 Run:
 

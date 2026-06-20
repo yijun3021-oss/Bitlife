@@ -433,7 +433,7 @@ Use these files and responsibilities:
 - `src/ui/panels/PrisonPanel.tsx`: render only when `life.prison.incarcerated` is true, with appeal control.
 - `src/ui/panels/AchievementsPanel.tsx`: render unlocked achievement ids with localized titles when keys exist.
 
-Keep visible labels localized by adding keys in Task 3.
+Keep visible labels localized by adding keys in Task 4.
 
 - [ ] **Step 4: Wire panels into `src/App.tsx`**
 

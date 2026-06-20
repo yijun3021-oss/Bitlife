@@ -422,7 +422,74 @@ export function ageUp(
 
 Keep existing v1 callers typed as `LifeState`, while tests and store code that pass `LifeStateV2` receive `LifeStateV2`.
 
-- [ ] **Step 4: Modify engine orchestration for this subsystem only**
+- [ ] **Step 4: Update ageUp internals to preserve v2 containers**
+
+In `src/game/engine.ts`, add a local union type near the top of the file:
+
+```ts
+type GameLifeState = LifeState | LifeStateV2;
+```
+
+Update `pickNextEvent` and `eventMatchesLife` so event selection accepts v2-compatible state:
+
+```ts
+export function pickNextEvent(life: GameLifeState, seed: string | number = `${life.character.id}:${life.character.age}`): LifeEvent | null {
+```
+
+```ts
+export function eventMatchesLife(event: LifeEvent, life: GameLifeState): boolean {
+```
+
+Inside `ageUp`, do not type the yearly object as `LifeState`. Type it as the union so spreading a `LifeStateV2` input preserves all v2 containers:
+
+```ts
+const agedLife: GameLifeState = {
+  ...life,
+  character: {
+    ...life.character,
+    age: nextAge,
+    money: life.character.money + salary,
+  },
+  school: getSchoolState(nextAge, life.school),
+  job: life.job === null ? null : { ...life.job, years: life.job.years + 1 },
+  usedActivitiesThisAge: [],
+  currentEvent: null,
+  log: [
+    ...(salary > 0 ? [makeLogEntry(nextAge, 'log.salary', life.log.length + 1, { amount: salary })] : []),
+    makeLogEntry(nextAge, 'log.ageUp', life.log.length, { name: life.character.name, age: nextAge }),
+    ...life.log,
+  ],
+};
+```
+
+Update `maybeDie` to accept and return the same state version without dropping v2 fields:
+
+```ts
+function maybeDie<TLife extends GameLifeState>(life: TLife, random: RandomSource): TLife {
+  const risk = calculateDeathRisk(life.character.age, life.character.attributes.health, life.statuses);
+  if (random.next() >= risk) {
+    return life;
+  }
+
+  const deathLog = makeLogEntry(life.character.age, 'log.death', life.log.length, { age: life.character.age });
+  return {
+    ...life,
+    character: { ...life.character, alive: false },
+    currentEvent: null,
+    deathSummary: {
+      age: life.character.age,
+      causeKey: getDeathCauseKey(life),
+      netWorth: life.character.money,
+      logKey: 'log.death',
+    },
+    log: [deathLog, ...life.log],
+  } as TLife;
+}
+```
+
+The `as TLife` cast is acceptable here because the returned object is a spread of the original state with shared top-level fields changed; all v2 containers remain present.
+
+- [ ] **Step 5: Modify engine orchestration for this subsystem only**
 
 In `src/game/engine.ts`, import the system functions:
 
@@ -434,7 +501,7 @@ import { settleEducationYear } from './systems/educationSystem';
 Inside `ageUp`, after the existing v1 age/school/job update and before death checking, normalize v2 lives through only these settlement functions:
 
 ```ts
-const settledLife =
+const settledLife: GameLifeState =
   agedLife.version === 2
     ? settleCareerYear(settleEducationYear(agedLife as LifeStateV2))
     : agedLife;
@@ -443,7 +510,7 @@ const deathCheck = maybeDie(settledLife, createSeededRandom(`${String(seed)}:dea
 
 Keep the rest of `ageUp` unchanged.
 
-- [ ] **Step 5: Run targeted and full game tests**
+- [ ] **Step 6: Run targeted and full game tests**
 
 Run:
 
@@ -455,7 +522,7 @@ $env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
 
 Expected: PASS and production build succeeds.
 
-- [ ] **Step 6: Commit engine hook**
+- [ ] **Step 7: Commit engine hook**
 
 Run:
 
