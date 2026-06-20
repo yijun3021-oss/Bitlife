@@ -2,7 +2,10 @@ import { events } from '../content/events';
 import { jobs } from '../content/jobs';
 import { familyNames, givenNames } from '../content/names';
 import { createSeededRandom, pickWeighted, type RandomSource } from './random';
+import { settleCareerYear } from './systems/careerSystem';
+import { settleEducationYear } from './systems/educationSystem';
 import { PASS_EVENT_CHOICE_ID } from './types';
+import type { LifeStateV2 } from './lifeStateV2';
 import type {
   Attributes,
   EducationStatus,
@@ -27,6 +30,7 @@ interface NewLifeInput {
 }
 
 type ChoiceEffects = LifeEventOption['effects'];
+type GameLifeState = LifeState | LifeStateV2;
 
 const relationshipInteractions: Record<
   RelationshipActionId,
@@ -72,7 +76,7 @@ export function getSchoolState(age: number, previous?: EducationStatus): Educati
   return { stage: 'finished', grade: 0, stress: clampAttribute(stress - 10) };
 }
 
-export function pickNextEvent(life: LifeState, seed: string | number = `${life.character.id}:${life.character.age}`): LifeEvent | null {
+export function pickNextEvent(life: GameLifeState, seed: string | number = `${life.character.id}:${life.character.age}`): LifeEvent | null {
   if (!life.character.alive) {
     return null;
   }
@@ -181,14 +185,19 @@ export function calculateDeathRisk(age: number, health: number, statuses: string
   return Math.min(0.85, Math.max(0, ageRisk + lowHealthRisk + statusRisk));
 }
 
-export function ageUp(life: LifeState, seed: string | number = `${life.character.id}:age`): LifeState {
+export function ageUp(life: LifeStateV2, seed?: string | number): LifeStateV2;
+export function ageUp(life: LifeState, seed?: string | number): LifeState;
+export function ageUp(
+  life: LifeState | LifeStateV2,
+  seed: string | number = `${life.character.id}:age`,
+): LifeState | LifeStateV2 {
   if (!life.character.alive || life.currentEvent !== null) {
     return life;
   }
 
   const nextAge = life.character.age + 1;
   const salary = life.job?.salary ?? 0;
-  const agedLife: LifeState = {
+  const agedLife: GameLifeState = {
     ...life,
     character: {
       ...life.character,
@@ -205,7 +214,11 @@ export function ageUp(life: LifeState, seed: string | number = `${life.character
       ...life.log,
     ],
   };
-  const deathCheck = maybeDie(agedLife, createSeededRandom(`${String(seed)}:death:${nextAge}`));
+  const settledLife: GameLifeState =
+    agedLife.version === 2
+      ? settleCareerYear(settleEducationYear(agedLife as LifeStateV2))
+      : agedLife;
+  const deathCheck = maybeDie(settledLife, createSeededRandom(`${String(seed)}:death:${nextAge}`));
 
   if (!deathCheck.character.alive) {
     return deathCheck;
@@ -318,7 +331,7 @@ export function interactWithRelationship(
   };
 }
 
-export function eventMatchesLife(event: LifeEvent, life: LifeState): boolean {
+export function eventMatchesLife(event: LifeEvent, life: GameLifeState): boolean {
   if (life.character.age < event.minAge || life.character.age > event.maxAge) {
     return false;
   }
@@ -428,7 +441,7 @@ function applyStatusEffect(statuses: string[], addStatus?: string, removeStatus?
   return [...removed, addStatus];
 }
 
-function maybeDie(life: LifeState, random: RandomSource): LifeState {
+function maybeDie<TLife extends GameLifeState>(life: TLife, random: RandomSource): TLife {
   const risk = calculateDeathRisk(life.character.age, life.character.attributes.health, life.statuses);
   if (random.next() >= risk) {
     return life;
@@ -449,10 +462,10 @@ function maybeDie(life: LifeState, random: RandomSource): LifeState {
       logKey: 'log.death',
     },
     log: [deathLog, ...life.log],
-  };
+  } as TLife;
 }
 
-function getDeathCauseKey(life: LifeState): 'death.oldAge' | 'death.poorHealth' | 'death.accident' {
+function getDeathCauseKey(life: GameLifeState): 'death.oldAge' | 'death.poorHealth' | 'death.accident' {
   if (life.character.attributes.health <= 25) {
     return 'death.poorHealth';
   }

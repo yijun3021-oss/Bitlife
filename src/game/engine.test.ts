@@ -17,7 +17,10 @@ import {
   getSchoolState,
   pickNextEvent,
 } from './engine';
+import { migrateLifeState } from './migrations';
 import { createSeededRandom, pickWeighted } from './random';
+import { applyForCareer } from './systems/careerSystem';
+import type { LifeStateV2 } from './lifeStateV2';
 import type {
   AttributeName,
   Attributes,
@@ -456,6 +459,15 @@ describe('life engine', () => {
 
     expect(rested.usedActivitiesThisAge).toEqual(['rest']);
     expect(aged.usedActivitiesThisAge).toEqual([]);
+  });
+
+  it('settles P1 education and career during age up for v2 lives', () => {
+    const base = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'us', locale: 'en-US', seed: 44 }));
+    const adult = { ...base, currentEvent: null, character: { ...base.character, age: 22, attributes: { ...base.character.attributes, smarts: 75 } }, education: { ...base.education, level: 'university' as const, graduated: true } };
+    const employed = applyForCareer(adult, 'career.cashier');
+    const result: LifeStateV2 = ageUp(employed, 'education-career-engine');
+    expect(result.character.money).toBeGreaterThan(employed.character.money);
+    expect(result.career.yearsInRole).toBe(1);
   });
 
   it('records death log and an existing death cause key for deterministic high-risk death', () => {

@@ -1,6 +1,6 @@
 import type { LifeState } from './types';
 
-export type EducationLevel = LifeState['school']['stage'] | 'university';
+export type EducationLevel = LifeState['school']['stage'] | 'community_college' | 'university';
 
 export interface LifeStateV2 extends Omit<LifeState, 'version'> {
   version: 2;

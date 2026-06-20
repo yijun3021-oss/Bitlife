@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { createNewLife, findJob } from './engine';
 import { migrateLifeState } from './migrations';
-import type { LifeStateV2 } from './lifeStateV2';
+import type { EducationLevel, LifeStateV2 } from './lifeStateV2';
 
 describe('life state migrations', () => {
+  it('allows community college as a P1 education level', () => {
+    const level: EducationLevel = 'community_college';
+    expect(level).toBe('community_college');
+  });
+
   it('migrates a v1 life to version 2 with P1 containers and preserved values', () => {
     const born = createNewLife({
       name: 'Mina Lin',
