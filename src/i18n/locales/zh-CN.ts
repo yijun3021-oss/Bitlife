@@ -126,6 +126,8 @@ export const zhCN = {
   'ui.label.stress': '压力',
   'ui.label.role': '职位',
   'ui.label.salary': '薪水',
+  'ui.label.performance': '表现',
+  'ui.label.yearsInRole': '在岗年数',
   'ui.label.latestResult': '最近结果',
   'ui.label.jobChoices': '工作选择',
   'ui.label.smartsRequirement': '智力 {value}+',

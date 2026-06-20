@@ -199,6 +199,65 @@ describe('App', () => {
     expect(screen.queryByText('Cashier')).not.toBeInTheDocument();
   });
 
+  it('hides legacy job choices when a P1 career is active', () => {
+    const adult = makeLife({ age: 18, locale: 'en-US' });
+    useLifeStore.setState({
+      locale: 'en-US',
+      life: {
+        ...adult,
+        career: { ...adult.career, currentJobId: 'career.cashier' },
+        currentEvent: null,
+        job: null,
+      },
+      activeTab: 'activities',
+    });
+    render(<App />);
+
+    expect(screen.queryByText('Cashier')).not.toBeInTheDocument();
+    expect(screen.queryByText('Office assistant')).not.toBeInTheDocument();
+  });
+
+  it('filters legacy job choices to P1-compatible careers', () => {
+    const adult = makeLife({ age: 18, locale: 'en-US' });
+    useLifeStore.setState({
+      locale: 'en-US',
+      life: { ...adult, currentEvent: null },
+      activeTab: 'activities',
+    });
+    render(<App />);
+
+    expect(screen.getByText('Cashier')).toBeInTheDocument();
+    expect(screen.getByText('Office assistant')).toBeInTheDocument();
+    expect(screen.queryByText('Cook')).not.toBeInTheDocument();
+    expect(screen.queryByText('Driver')).not.toBeInTheDocument();
+    expect(screen.queryByText('Support agent')).not.toBeInTheDocument();
+  });
+
+  it('shows P1 career details in the work summary', () => {
+    const adult = makeLife({ age: 18, locale: 'en-US' });
+    useLifeStore.setState({
+      locale: 'en-US',
+      life: {
+        ...adult,
+        career: { currentJobId: 'career.cashier', performance: 61, yearsInRole: 3, retired: false },
+        currentEvent: null,
+        job: null,
+      },
+      activeTab: 'schoolWork',
+    });
+    render(<App />);
+
+    const workPanel = screen.getByText('Work').closest('section');
+    expect(workPanel).not.toBeNull();
+    expect(within(workPanel!).queryByText('No job yet')).not.toBeInTheDocument();
+    expect(within(workPanel!).getByText('Cashier')).toBeInTheDocument();
+    expect(within(workPanel!).getByText('18,000')).toBeInTheDocument();
+    expect(within(workPanel!).getByText('Performance')).toBeInTheDocument();
+    expect(within(workPanel!).getByText('61')).toBeInTheDocument();
+    expect(within(workPanel!).getByText('Years in role')).toBeInTheDocument();
+    expect(within(workPanel!).getByText('3')).toBeInTheDocument();
+  });
+
   it('uses English form labels and actions after switching language', async () => {
     render(<App />);
 

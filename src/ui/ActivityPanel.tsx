@@ -1,4 +1,5 @@
 import { activities } from '../content/activities';
+import { careers } from '../content/catalog/careers';
 import { jobs } from '../content/jobs';
 import type { LifeStateV2 } from '../game/lifeStateV2';
 import type { AttributeName } from '../game/types';
@@ -11,6 +12,8 @@ interface ActivityPanelProps {
 }
 
 const attributeOrder: AttributeName[] = ['happiness', 'health', 'smarts', 'looks'];
+const p1CareerIds = new Set(careers.map((career) => career.id));
+const bridgeableLegacyJobs = jobs.filter((job) => p1CareerIds.has(`career.${job.id}`));
 
 export function ActivityPanel({ life, onChooseJob, onRun }: ActivityPanelProps) {
   const availableActivities = activities.filter((activity) => {
@@ -26,7 +29,7 @@ export function ActivityPanel({ life, onChooseJob, onRun }: ActivityPanelProps) 
   const feedback = latestLog !== undefined && (latestLog.textKey.startsWith('activity.') || latestLog.textKey === 'log.jobAccepted')
     ? translate(life.locale, latestLog.textKey, latestLog.values)
     : null;
-  const canChooseJob = life.character.age >= 18 && life.job === null;
+  const canChooseJob = life.character.age >= 18 && life.career.currentJobId === null && life.job === null;
 
   return (
     <div className="screen-stack">
@@ -75,7 +78,7 @@ export function ActivityPanel({ life, onChooseJob, onRun }: ActivityPanelProps) 
         <section className="panel">
           <p className="panel-title">{translate(life.locale, 'ui.label.jobChoices')}</p>
           <div className="menu-list">
-            {jobs.map((job) => {
+            {bridgeableLegacyJobs.map((job) => {
               const qualified = life.character.attributes.smarts >= job.smartsMin;
               return (
                 <button

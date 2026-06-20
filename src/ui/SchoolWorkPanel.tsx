@@ -11,6 +11,9 @@ interface SchoolWorkPanelProps {
 
 export function SchoolWorkPanel({ life, onApplyForCareer, onEnroll }: SchoolWorkPanelProps) {
   const { career, education, locale, school, job } = life;
+  const activeCareer = career.currentJobId === null
+    ? undefined
+    : careers.find((catalogCareer) => catalogCareer.id === career.currentJobId);
 
   return (
     <div className="screen-stack">
@@ -34,9 +37,26 @@ export function SchoolWorkPanel({ life, onApplyForCareer, onEnroll }: SchoolWork
 
       <section className="panel">
         <p className="panel-title">{translate(locale, 'ui.label.work')}</p>
-        {job === null ? (
-          <p className="empty-text">{translate(locale, 'ui.empty.noJob')}</p>
-        ) : (
+        {activeCareer !== undefined ? (
+          <dl className="detail-list">
+            <div>
+              <dt>{translate(locale, 'ui.label.role')}</dt>
+              <dd>{translate(locale, activeCareer.titleKey)}</dd>
+            </div>
+            <div>
+              <dt>{translate(locale, 'ui.label.salary')}</dt>
+              <dd>{formatMoney(activeCareer.salary)}</dd>
+            </div>
+            <div>
+              <dt>{translate(locale, 'ui.label.performance')}</dt>
+              <dd>{career.performance}</dd>
+            </div>
+            <div>
+              <dt>{translate(locale, 'ui.label.yearsInRole')}</dt>
+              <dd>{career.yearsInRole}</dd>
+            </div>
+          </dl>
+        ) : job !== null ? (
           <dl className="detail-list">
             <div>
               <dt>{translate(locale, 'ui.label.role')}</dt>
@@ -47,6 +67,8 @@ export function SchoolWorkPanel({ life, onApplyForCareer, onEnroll }: SchoolWork
               <dd>{formatMoney(job.salary)}</dd>
             </div>
           </dl>
+        ) : (
+          <p className="empty-text">{translate(locale, 'ui.empty.noJob')}</p>
         )}
       </section>
 

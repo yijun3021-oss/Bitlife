@@ -126,6 +126,8 @@ export const enUS = {
   'ui.label.stress': 'Stress',
   'ui.label.role': 'Role',
   'ui.label.salary': 'Salary',
+  'ui.label.performance': 'Performance',
+  'ui.label.yearsInRole': 'Years in role',
   'ui.label.latestResult': 'Latest result',
   'ui.label.jobChoices': 'Job choices',
   'ui.label.smartsRequirement': 'Smarts {value}+',
