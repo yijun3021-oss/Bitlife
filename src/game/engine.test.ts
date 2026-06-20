@@ -20,6 +20,7 @@ import {
 import { migrateLifeState } from './migrations';
 import { createSeededRandom, pickWeighted } from './random';
 import { applyForCareer } from './systems/careerSystem';
+import { addRelationship } from './systems/relationshipSystem';
 import type { LifeStateV2 } from './lifeStateV2';
 import type {
   AttributeName,
@@ -508,6 +509,14 @@ describe('life engine', () => {
     const result: LifeStateV2 = ageUp(employed, 'education-career-engine');
     expect(result.character.money).toBeGreaterThan(employed.character.money);
     expect(result.career.yearsInRole).toBe(1);
+  });
+
+  it('settles P1 relationships during age up for v2 lives', () => {
+    const base = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'us', locale: 'en-US', seed: 52 }));
+    const adult = { ...base, currentEvent: null, character: { ...base.character, age: 25 } };
+    const withFriend = addRelationship(adult, { id: 'rel_alex', name: 'Alex Park', type: 'friend', closeness: 80 });
+    const result: LifeStateV2 = ageUp(withFriend, 'relationship-family-engine');
+    expect(result.relationships.find((item) => item.id === 'rel_alex')?.closeness).toBe(78);
   });
 
   it('does not double settle legacy job salary for v2 lives with P1 careers', () => {

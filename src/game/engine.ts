@@ -5,6 +5,8 @@ import { clampAttribute } from './attributes';
 import { createSeededRandom, pickWeighted, type RandomSource } from './random';
 import { settleCareerYear } from './systems/careerSystem';
 import { settleEducationYear } from './systems/educationSystem';
+import { settleFamilyYear } from './systems/familySystem';
+import { settleRelationshipYear } from './systems/relationshipSystem';
 import { PASS_EVENT_CHOICE_ID } from './types';
 import type { LifeStateV2 } from './lifeStateV2';
 import type {
@@ -216,7 +218,7 @@ export function ageUp(
   };
   const settledLife: GameLifeState =
     agedLife.version === 2
-      ? settleCareerYear(settleEducationYear(agedLife as LifeStateV2))
+      ? settleFamilyYear(settleRelationshipYear(settleCareerYear(settleEducationYear(agedLife as LifeStateV2))))
       : agedLife;
   const deathCheck = maybeDie(settledLife, createSeededRandom(`${String(seed)}:death:${nextAge}`));
 
