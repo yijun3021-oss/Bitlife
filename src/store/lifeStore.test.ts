@@ -62,6 +62,36 @@ describe('life store', () => {
     expect(useLifeStore.getState().savedLife?.character.name).toBe('Mina Lin');
   });
 
+  it('loads saved lives with P1 relationship kinds', () => {
+    const savedLife: LifeState = {
+      ...createNewLife({
+        name: 'Mina Lin',
+        gender: 'female',
+        countryId: 'cn',
+        locale: 'en-US',
+        seed: 12,
+      }),
+      relationships: [
+        { id: 'rel_friend', name: 'Alex Park', type: 'friend', closeness: 60, alive: true },
+        { id: 'rel_partner', name: 'Taylor Kim', type: 'partner', closeness: 80, alive: true },
+        { id: 'rel_spouse', name: 'Jordan Lin', type: 'spouse', closeness: 85, alive: true },
+        { id: 'rel_ex', name: 'Casey Wu', type: 'ex', closeness: 30, alive: true },
+        { id: 'rel_child', name: 'Mia Lin', type: 'child', closeness: 70, alive: true },
+      ],
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ version: 1, locale: 'en-US', life: savedLife }));
+
+    useLifeStore.getState().loadLife();
+
+    expect(useLifeStore.getState().savedLife?.relationships.map((relationship) => relationship.type)).toEqual([
+      'friend',
+      'partner',
+      'spouse',
+      'ex',
+      'child',
+    ]);
+  });
+
   it('continues a loaded saved life on demand', () => {
     const savedLife = createNewLife({
       name: 'Mina Lin',

@@ -30,7 +30,12 @@ export function divorceSpouse(life: LifeStateV2): LifeStateV2 {
 }
 
 export function adoptChild(life: LifeStateV2, child: { id: string; name: string }): LifeStateV2 {
-  if (life.character.age < 21 || life.character.money < 15000 || life.family.childrenIds.includes(child.id)) {
+  if (
+    life.character.age < 21 ||
+    life.character.money < 15000 ||
+    life.family.childrenIds.includes(child.id) ||
+    life.relationships.some((item) => item.id === child.id)
+  ) {
     return life;
   }
 

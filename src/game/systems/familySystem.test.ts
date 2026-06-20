@@ -32,6 +32,16 @@ describe('familySystem', () => {
     expect(result.character.money).toBe(35000);
   });
 
+  it('rejects adoption when the child id already belongs to another relationship', () => {
+    const withFriend = addRelationship(adultLife(), { id: 'rel_alex', name: 'Alex Park', type: 'friend', closeness: 60 });
+    const result = adoptChild(withFriend, { id: 'rel_alex', name: 'Alex Park' });
+    expect(result).toBe(withFriend);
+    expect(result.relationships).toHaveLength(withFriend.relationships.length);
+    expect(result.family.childrenIds).toEqual([]);
+    expect(result.family.adoptionCount).toBe(0);
+    expect(result.character.money).toBe(50000);
+  });
+
   it('settles family year without removing children', () => {
     const family = adoptChild(adultLife(), { id: 'rel_child_mia', name: 'Mia Lin' });
     expect(settleFamilyYear(family).family.childrenIds).toEqual(['rel_child_mia']);

@@ -472,7 +472,16 @@ function isGender(value: unknown): value is Gender {
 }
 
 function isRelationshipKind(value: unknown): value is LifeState['relationships'][number]['type'] {
-  return value === 'mother' || value === 'father' || value === 'sibling';
+  return (
+    value === 'mother' ||
+    value === 'father' ||
+    value === 'sibling' ||
+    value === 'friend' ||
+    value === 'partner' ||
+    value === 'spouse' ||
+    value === 'ex' ||
+    value === 'child'
+  );
 }
 
 function isStringArray(value: unknown): value is string[] {

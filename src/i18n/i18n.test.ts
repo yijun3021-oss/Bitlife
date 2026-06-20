@@ -13,6 +13,25 @@ describe('translate', () => {
     expect(translate('en-US', 'ui.action.ageUp')).toBe('Age up');
   });
 
+  it('returns labels for P1 relationship kinds in both locales', () => {
+    const kinds = ['friend', 'partner', 'spouse', 'ex', 'child'];
+
+    expect(kinds.map((kind) => translate('en-US', `relationship.${kind}`))).toEqual([
+      'Friend',
+      'Partner',
+      'Spouse',
+      'Ex',
+      'Child',
+    ]);
+    expect(kinds.map((kind) => translate('zh-CN', `relationship.${kind}`))).toEqual([
+      '朋友',
+      '伴侣',
+      '配偶',
+      '前任',
+      '孩子',
+    ]);
+  });
+
   it('interpolates placeholder values', () => {
     expect(translate('en-US', 'log.birth', { name: 'Mina' })).toBe('Mina was born.');
   });
