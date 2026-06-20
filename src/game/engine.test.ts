@@ -368,6 +368,41 @@ describe('life engine', () => {
     expect(withJobEvents.some((event) => event?.requires?.hasJob === true)).toBe(true);
   });
 
+  it('matches job-required events for v2 lives with active P1 careers', () => {
+    const life = migrateLifeState(createNewLife({
+      name: 'Mina Lin',
+      gender: 'female',
+      countryId: 'cn',
+      locale: 'zh-CN',
+      seed: 15,
+    }));
+    const employed: LifeStateV2 = {
+      ...life,
+      character: { ...life.character, age: 24 },
+      job: null,
+      career: { currentJobId: 'career.cashier', performance: 50, yearsInRole: 1, retired: false },
+    };
+    const workEvent: LifeEvent = {
+      id: 'p1_work_event',
+      textKey: 'event.p1Work.text',
+      minAge: 18,
+      maxAge: 65,
+      weight: 1,
+      tags: ['work'],
+      requires: { hasJob: true },
+      choices: [
+        {
+          id: 'ok',
+          textKey: 'event.p1Work.choice.ok',
+          resultKey: 'event.p1Work.result.ok',
+          effects: {},
+        },
+      ],
+    };
+
+    expect(eventMatchesLife(workEvent, employed)).toBe(true);
+  });
+
   it('applies activity effects immutably and clamps attributes', () => {
     const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
     const next = applyActivity(life, {

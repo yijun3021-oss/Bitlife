@@ -338,7 +338,7 @@ export function eventMatchesLife(event: LifeEvent, life: GameLifeState): boolean
   if (event.requires?.schoolStage !== undefined && event.requires.schoolStage !== life.school.stage) {
     return false;
   }
-  if (event.requires?.hasJob !== undefined && event.requires.hasJob !== (life.job !== null)) {
+  if (event.requires?.hasJob !== undefined && event.requires.hasJob !== hasActiveJob(life)) {
     return false;
   }
   if (!attributesMeetMinimum(life.character.attributes, event.requires?.minAttributes)) {
@@ -354,6 +354,13 @@ export function eventMatchesLife(event: LifeEvent, life: GameLifeState): boolean
     return false;
   }
   return true;
+}
+
+function hasActiveJob(life: GameLifeState): boolean {
+  if (life.version === 2) {
+    return life.career.currentJobId !== null && !life.career.retired;
+  }
+  return life.job !== null;
 }
 
 function applyEffect(life: LifeState, effect: ChoiceEffects): LifeState {
