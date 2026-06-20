@@ -1,6 +1,7 @@
 import {
   extractBullets,
   extractHeadings,
+  extractListTerms,
   extractTableFirstCells,
   readIndexedPage,
   recordsFromCandidates,
@@ -19,6 +20,10 @@ const sources = [
 const records = [];
 for (const title of sources) {
   const page = await readIndexedPage(title);
+  const preHeadingListTerms =
+    title === 'Fertility'
+      ? extractListTerms(page.text).filter((item) => !['Trivia', 'Gallery'].includes(item.section) && item.level === 1)
+      : [];
   const candidates = [
     ...extractHeadings(page.text, {
       minLevel: 2,
@@ -27,6 +32,7 @@ for (const title of sources) {
     }),
     ...extractTableFirstCells(page.text),
     ...extractBullets(page.text).filter((item) => item.section && item.level === 1),
+    ...preHeadingListTerms,
   ];
 
   records.push(...recordsFromCandidates(page, candidates, 'relationship'));

@@ -1,6 +1,7 @@
 import {
   extractBullets,
   extractHeadings,
+  extractListTerms,
   extractTableFirstCells,
   readIndexedPage,
   recordsFromCandidates,
@@ -16,7 +17,7 @@ const sources = [
 const records = [];
 for (const source of sources) {
   const page = await readIndexedPage(source.title);
-  const candidates = [
+  let candidates = [
     ...extractHeadings(page.text, {
       minLevel: 2,
       maxLevel: 4,
@@ -25,6 +26,14 @@ for (const source of sources) {
     ...extractTableFirstCells(page.text),
     ...extractBullets(page.text).filter((item) => item.section && item.level <= 2),
   ];
+
+  if (source.title === 'Alternative Doctor') {
+    candidates = [...candidates, ...extractListTerms(page.text).filter((item) => item.level === 1)];
+  }
+
+  if (candidates.length === 0) {
+    candidates = [{ rawName: page.title, section: '' }];
+  }
 
   records.push(...recordsFromCandidates(page, candidates, source.category));
 }

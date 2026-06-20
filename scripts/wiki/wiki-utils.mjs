@@ -173,6 +173,35 @@ export function extractBullets(text) {
   return records;
 }
 
+export function extractListTerms(text) {
+  const records = [];
+  let section = '';
+
+  for (const line of String(text ?? '').split(/\r?\n/)) {
+    const heading = parseHeading(line.trim());
+    if (heading?.title) {
+      section = heading.title;
+      continue;
+    }
+
+    const match = line.match(/^\s*([*#]+)\s*(.+?)\s*;?\s*$/);
+    if (!match) {
+      continue;
+    }
+
+    const term = match[2]
+      .replaceAll(/\)-\s+.*/g, ')')
+      .replaceAll(/\s+-\s+.*/g, '')
+      .replaceAll(/-\s+.*/g, '');
+    const rawName = cleanName(term);
+    if (isLikelyEntityName(rawName)) {
+      records.push({ rawName, section, level: match[1].length });
+    }
+  }
+
+  return records;
+}
+
 export function extractHeadings(text, { minLevel = 2, maxLevel = 4, exclude = [] } = {}) {
   const excluded = exclude.map((item) => normalizeId(item));
   return String(text ?? '')
