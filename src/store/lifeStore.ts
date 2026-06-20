@@ -8,9 +8,25 @@ import {
   findJob,
   interactWithRelationship,
 } from '../game/engine';
-import type { LifeStateV2 } from '../game/lifeStateV2';
+import type { LicenseKind, LifeStateV2 } from '../game/lifeStateV2';
 import { migrateLifeState } from '../game/migrations';
-import type { Gender, LifeState, Locale, RelationshipActionId } from '../game/types';
+import {
+  buyAsset as buyAssetSystem,
+  obtainLicense as obtainLicenseSystem,
+  sellAsset as sellAssetSystem,
+} from '../game/systems/assetSystem';
+import { applyForCareer as applyForCareerSystem } from '../game/systems/careerSystem';
+import { attemptCrime as attemptCrimeSystem } from '../game/systems/crimeSystem';
+import { enrollInProgram as enrollInProgramSystem } from '../game/systems/educationSystem';
+import {
+  adoptChild as adoptChildSystem,
+  divorceSpouse as divorceSpouseSystem,
+  marryPartner as marryPartnerSystem,
+} from '../game/systems/familySystem';
+import { contractDisease as contractDiseaseSystem, treatDisease as treatDiseaseSystem } from '../game/systems/healthSystem';
+import { attemptAppeal as attemptAppealSystem } from '../game/systems/prisonSystem';
+import { addRelationship as addRelationshipSystem, askOnDate as askOnDateSystem } from '../game/systems/relationshipSystem';
+import type { Gender, LifeState, Locale, RelationshipActionId, RelationshipKind } from '../game/types';
 
 export const SAVE_KEY = 'bitliffe.save.v1';
 
@@ -50,6 +66,20 @@ interface LifeStoreState {
   runActivity: (activityId: string) => void;
   chooseJob: (jobId: string) => void;
   interactRelationship: (relationshipId: string, actionId: RelationshipActionId) => void;
+  enrollInProgram: (programId: string) => void;
+  applyForCareer: (careerId: string) => void;
+  addRelationship: (input: { id: string; name: string; type: RelationshipKind; closeness: number }) => void;
+  askOnDate: (relationshipId: string) => void;
+  marryPartner: (relationshipId: string) => void;
+  divorceSpouse: () => void;
+  adoptChild: (child: { id: string; name: string }) => void;
+  buyAsset: (assetCatalogId: string) => void;
+  sellAsset: (ownedAssetId: string) => void;
+  obtainLicense: (license: LicenseKind) => void;
+  contractDisease: (diseaseId: string) => void;
+  treatDisease: (diseaseId: string, treatmentId: string) => void;
+  attemptCrime: (crimeId: string, roll?: number) => void;
+  attemptAppeal: (roll?: number) => void;
 }
 
 export const useLifeStore = create<LifeStoreState>((set, get) => ({
@@ -179,6 +209,146 @@ export const useLifeStore = create<LifeStoreState>((set, get) => ({
       currentLife,
       interactWithRelationship(currentLife as unknown as LifeState, relationshipId, actionId),
     );
+    updateLife(currentLife, life, get().locale, set);
+  },
+
+  enrollInProgram: (programId) => {
+    const currentLife = get().life;
+    if (currentLife === null) {
+      return;
+    }
+
+    const life = enrollInProgramSystem(currentLife, programId);
+    updateLife(currentLife, life, get().locale, set);
+  },
+
+  applyForCareer: (careerId) => {
+    const currentLife = get().life;
+    if (currentLife === null) {
+      return;
+    }
+
+    const life = applyForCareerSystem(currentLife, careerId);
+    updateLife(currentLife, life, get().locale, set);
+  },
+
+  addRelationship: (input) => {
+    const currentLife = get().life;
+    if (currentLife === null) {
+      return;
+    }
+
+    const life = addRelationshipSystem(currentLife, input);
+    updateLife(currentLife, life, get().locale, set);
+  },
+
+  askOnDate: (relationshipId) => {
+    const currentLife = get().life;
+    if (currentLife === null) {
+      return;
+    }
+
+    const life = askOnDateSystem(currentLife, relationshipId);
+    updateLife(currentLife, life, get().locale, set);
+  },
+
+  marryPartner: (relationshipId) => {
+    const currentLife = get().life;
+    if (currentLife === null) {
+      return;
+    }
+
+    const life = marryPartnerSystem(currentLife, relationshipId);
+    updateLife(currentLife, life, get().locale, set);
+  },
+
+  divorceSpouse: () => {
+    const currentLife = get().life;
+    if (currentLife === null) {
+      return;
+    }
+
+    const life = divorceSpouseSystem(currentLife);
+    updateLife(currentLife, life, get().locale, set);
+  },
+
+  adoptChild: (child) => {
+    const currentLife = get().life;
+    if (currentLife === null) {
+      return;
+    }
+
+    const life = adoptChildSystem(currentLife, child);
+    updateLife(currentLife, life, get().locale, set);
+  },
+
+  buyAsset: (assetCatalogId) => {
+    const currentLife = get().life;
+    if (currentLife === null) {
+      return;
+    }
+
+    const life = buyAssetSystem(currentLife, assetCatalogId);
+    updateLife(currentLife, life, get().locale, set);
+  },
+
+  sellAsset: (ownedAssetId) => {
+    const currentLife = get().life;
+    if (currentLife === null) {
+      return;
+    }
+
+    const life = sellAssetSystem(currentLife, ownedAssetId);
+    updateLife(currentLife, life, get().locale, set);
+  },
+
+  obtainLicense: (license) => {
+    const currentLife = get().life;
+    if (currentLife === null) {
+      return;
+    }
+
+    const life = obtainLicenseSystem(currentLife, license);
+    updateLife(currentLife, life, get().locale, set);
+  },
+
+  contractDisease: (diseaseId) => {
+    const currentLife = get().life;
+    if (currentLife === null) {
+      return;
+    }
+
+    const life = contractDiseaseSystem(currentLife, diseaseId);
+    updateLife(currentLife, life, get().locale, set);
+  },
+
+  treatDisease: (diseaseId, treatmentId) => {
+    const currentLife = get().life;
+    if (currentLife === null) {
+      return;
+    }
+
+    const life = treatDiseaseSystem(currentLife, diseaseId, treatmentId);
+    updateLife(currentLife, life, get().locale, set);
+  },
+
+  attemptCrime: (crimeId, roll = Math.random()) => {
+    const currentLife = get().life;
+    if (currentLife === null) {
+      return;
+    }
+
+    const life = attemptCrimeSystem(currentLife, crimeId, roll);
+    updateLife(currentLife, life, get().locale, set);
+  },
+
+  attemptAppeal: (roll = Math.random()) => {
+    const currentLife = get().life;
+    if (currentLife === null) {
+      return;
+    }
+
+    const life = attemptAppealSystem(currentLife, roll);
     updateLife(currentLife, life, get().locale, set);
   },
 }));
