@@ -9,11 +9,22 @@ const adultLife = () => {
 };
 
 describe('healthSystem', () => {
-  it('adds a disease once and lowers health', () => {
-    const result = contractDisease(adultLife(), 'disease.common_cold');
+  it('adds common cold once and applies its status without immediate health loss', () => {
+    const life = adultLife();
+    const result = contractDisease(life, 'disease.common_cold');
     expect(result.health.diseases).toContain('disease.common_cold');
-    expect(result.character.attributes.health).toBeLessThan(adultLife().character.attributes.health);
+    expect(result.statuses).toContain('sick');
+    expect(result.character.attributes.health).toBe(life.character.attributes.health);
     expect(contractDisease(result, 'disease.common_cold')).toBe(result);
+  });
+
+  it('applies non-health disease attributes from the catalog', () => {
+    const life = adultLife();
+    const result = contractDisease(life, 'disease.migraine');
+    expect(result.health.diseases).toContain('disease.migraine');
+    expect(result.statuses).toContain('sick');
+    expect(result.character.attributes.happiness).toBe(life.character.attributes.happiness - 3);
+    expect(result.character.attributes.health).toBe(life.character.attributes.health);
   });
 
   it('treats an existing disease and records recovery', () => {
@@ -24,9 +35,17 @@ describe('healthSystem', () => {
     expect(result.stats.diseasesRecovered).toBe(1);
   });
 
-  it('reduces health during yearly settlement when diseases are active', () => {
-    const sick = contractDisease(adultLife(), 'disease.common_cold');
+  it('applies exact catalog health impact during yearly settlement', () => {
+    const life = adultLife();
+    const sick = { ...life, health: { ...life.health, diseases: ['disease.common_cold'] } };
     const result = settleHealthYear(sick);
-    expect(result.character.attributes.health).toBeLessThan(sick.character.attributes.health);
+    expect(result.character.attributes.health).toBe(sick.character.attributes.health - 4);
+  });
+
+  it('ignores unknown stale disease ids during yearly settlement', () => {
+    const life = adultLife();
+    const stale = { ...life, health: { ...life.health, diseases: ['disease.unknown'] } };
+    const result = settleHealthYear(stale);
+    expect(result).toBe(stale);
   });
 });

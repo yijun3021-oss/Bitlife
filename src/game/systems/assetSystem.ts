@@ -8,7 +8,7 @@ export function buyAsset(life: LifeStateV2, assetCatalogId: string): LifeStateV2
   }
 
   const owned = {
-    id: `owned_${asset.id}_${life.character.age}_${life.assets.length}`,
+    id: createOwnedAssetId(life, asset.id),
     catalogId: asset.id,
     value: asset.price,
     purchaseAge: life.character.age,
@@ -47,4 +47,17 @@ export function settleAssetYear(life: LifeStateV2): LifeStateV2 {
     ...life,
     assets: life.assets.map((item) => ({ ...item, value: Math.max(0, Math.round(item.value * 0.9)) })),
   };
+}
+
+function createOwnedAssetId(life: LifeStateV2, assetCatalogId: string): string {
+  const existingIds = new Set(life.assets.map((item) => item.id));
+  let suffix = life.assets.length;
+  let id = `owned_${assetCatalogId}_${life.character.age}_${suffix}`;
+
+  while (existingIds.has(id)) {
+    suffix += 1;
+    id = `owned_${assetCatalogId}_${life.character.age}_${suffix}`;
+  }
+
+  return id;
 }

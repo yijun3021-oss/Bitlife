@@ -23,6 +23,21 @@ describe('assetSystem', () => {
     expect(result.character.money).toBe(owned.character.money + owned.assets[0].value);
   });
 
+  it('keeps ids unique after selling an earlier asset and buying the same catalog again', () => {
+    const withFirstCar = buyAsset(adultLife(), 'asset.used_compact');
+    const withWatch = buyAsset(withFirstCar, 'asset.gold_watch');
+    const afterSellingCar = sellAsset(withWatch, withFirstCar.assets[0].id);
+    const withSecondWatch = buyAsset(afterSellingCar, 'asset.gold_watch');
+    const watchIds = withSecondWatch.assets.map((asset) => asset.id);
+
+    expect(withSecondWatch.assets).toHaveLength(2);
+    expect(new Set(watchIds)).toHaveLength(2);
+
+    const afterSellingOneWatch = sellAsset(withSecondWatch, withSecondWatch.assets[0].id);
+    expect(afterSellingOneWatch.assets).toHaveLength(1);
+    expect(afterSellingOneWatch.assets[0].id).toBe(withSecondWatch.assets[1].id);
+  });
+
   it('obtains a driving license once', () => {
     const result = obtainLicense(adultLife(), 'driving');
     expect(result.licenses.driving).toBe(true);
