@@ -28,21 +28,20 @@ const allCatalogItems: CatalogItem[] = [
   ...p1Events,
 ];
 
-describe('p1 seed catalogs', () => {
-  it('ships a small verified seed for every P1 catalog before scale-up', () => {
-    expect(careers.length).toBeGreaterThanOrEqual(5);
-    expect(educationPrograms.length).toBeGreaterThanOrEqual(3);
-    expect(relationshipEventConfigs.length).toBeGreaterThanOrEqual(3);
-    expect(assets.length).toBeGreaterThanOrEqual(5);
-    expect(diseases.length).toBeGreaterThanOrEqual(5);
-    expect(crimes.length).toBeGreaterThanOrEqual(5);
-    expect(prisonActivities.length).toBeGreaterThanOrEqual(3);
-    expect(achievements.length).toBeGreaterThanOrEqual(5);
-    expect(countries.length).toBeGreaterThanOrEqual(3);
-    expect(p1Events.length).toBeGreaterThanOrEqual(10);
+describe('p1 catalogs', () => {
+  it('ships full P1 catalog coverage after scale-up', () => {
+    expect(careers.length).toBeGreaterThanOrEqual(50);
+    expect(educationPrograms.length).toBeGreaterThanOrEqual(20);
+    expect(relationshipEventConfigs.length).toBeGreaterThanOrEqual(80);
+    expect(assets.length).toBeGreaterThanOrEqual(50);
+    expect(diseases.length).toBeGreaterThanOrEqual(40);
+    expect(crimes.length).toBeGreaterThanOrEqual(20);
+    expect(prisonActivities.length).toBeGreaterThanOrEqual(40);
+    expect(achievements.length).toBeGreaterThanOrEqual(80);
+    expect(p1Events.length).toBeGreaterThanOrEqual(150);
   });
 
-  it('keeps every P1 seed catalog item traceable and localized', () => {
+  it('keeps every P1 catalog item traceable and localized', () => {
     expect(validateCatalogIds(allCatalogItems)).toEqual([]);
     expect(validateSourceRefs(allCatalogItems)).toEqual([]);
     expect(validateLocaleKeys(allCatalogItems, zhCN, enUS)).toEqual([]);
