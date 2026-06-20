@@ -31,16 +31,24 @@ export function validateLocaleKeys(
   const errors: string[] = [];
 
   for (const item of items) {
-    if (!(item.titleKey in zhCN)) {
-      errors.push(`Missing zh-CN locale key for catalog id ${item.id}: ${item.titleKey}`);
+    for (const key of getLocaleKeys(item)) {
+      if (!(key in zhCN)) {
+        errors.push(`Missing zh-CN locale key for catalog id ${item.id}: ${key}`);
+      }
     }
   }
 
   for (const item of items) {
-    if (!(item.titleKey in enUS)) {
-      errors.push(`Missing en-US locale key for catalog id ${item.id}: ${item.titleKey}`);
+    for (const key of getLocaleKeys(item)) {
+      if (!(key in enUS)) {
+        errors.push(`Missing en-US locale key for catalog id ${item.id}: ${key}`);
+      }
     }
   }
 
   return errors;
+}
+
+function getLocaleKeys(item: CatalogItem): string[] {
+  return [item.titleKey, item.summaryKey, item.descriptionKey].filter((key): key is string => Boolean(key));
 }

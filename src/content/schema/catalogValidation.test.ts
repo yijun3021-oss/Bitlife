@@ -60,4 +60,32 @@ describe('catalog validation', () => {
       'Missing en-US locale key for catalog id activity.rest: catalog.activity.rest.title',
     ]);
   });
+
+  it('validateLocaleKeys reports missing optional summary and description keys', () => {
+    const items = [
+      catalogItem({
+        id: 'activity.rest',
+        titleKey: 'catalog.activity.rest.title',
+        summaryKey: 'catalog.activity.rest.summary',
+        descriptionKey: 'catalog.activity.rest.description',
+      }),
+    ];
+
+    expect(
+      validateLocaleKeys(
+        items,
+        {
+          'catalog.activity.rest.title': 'Rest',
+          'catalog.activity.rest.description': 'Rest restores health.',
+        },
+        {
+          'catalog.activity.rest.title': 'Rest',
+          'catalog.activity.rest.summary': 'Take a break.',
+        },
+      ),
+    ).toEqual([
+      'Missing zh-CN locale key for catalog id activity.rest: catalog.activity.rest.summary',
+      'Missing en-US locale key for catalog id activity.rest: catalog.activity.rest.description',
+    ]);
+  });
 });
