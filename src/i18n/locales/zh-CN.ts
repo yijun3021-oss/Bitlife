@@ -1617,6 +1617,8 @@ export const zhCN = {
   'catalog.event.elderWindowLight.summary': '窗边光线带来一个简短的晚年片段。',
   'catalog.event.elderLegacyLetter.title': '留给后人的信',
   'catalog.event.elderLegacyLetter.summary': '留给后人的信带来一个简短的晚年片段。',
+  'event.p1Catalog.choice.continue': '回应这一刻',
+  'event.p1Catalog.result': '你做出了回应，并感受到了影响。',
   'death.oldAge': '自然老去',
   'death.poorHealth': '长期健康恶化',
   'death.accident': '意外事故',

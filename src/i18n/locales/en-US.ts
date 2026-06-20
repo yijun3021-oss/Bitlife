@@ -1617,6 +1617,8 @@ export const enUS = {
   'catalog.event.elderWindowLight.summary': 'Window Light brings a short elder moment with direct life effects.',
   'catalog.event.elderLegacyLetter.title': 'Legacy Letter',
   'catalog.event.elderLegacyLetter.summary': 'Legacy Letter brings a short elder moment with direct life effects.',
+  'event.p1Catalog.choice.continue': 'Respond to the moment',
+  'event.p1Catalog.result': 'You followed through and felt the effects.',
   'death.oldAge': 'old age',
   'death.poorHealth': 'declining health',
   'death.accident': 'an accident',

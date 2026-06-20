@@ -1,3 +1,4 @@
+import { p1Events, type P1EventCatalogItem, type P1EventStage } from '../content/catalog/events';
 import { events } from '../content/events';
 import { jobs } from '../content/jobs';
 import { familyNames, givenNames } from '../content/names';
@@ -38,6 +39,11 @@ interface NewLifeInput {
 
 type ChoiceEffects = LifeEventOption['effects'];
 type GameLifeState = LifeState | LifeStateV2;
+
+const P1_CATALOG_EVENT_CHOICE_ID = 'catalog_effect';
+const P1_CATALOG_EVENT_CHOICE_KEY = 'event.p1Catalog.choice.continue';
+const P1_CATALOG_EVENT_RESULT_KEY = 'event.p1Catalog.result';
+const runtimeEvents: LifeEvent[] = [...events, ...p1Events.map(mapP1EventToLifeEvent)];
 
 export { clampAttribute };
 
@@ -86,7 +92,7 @@ export function pickNextEvent(life: GameLifeState, seed: string | number = `${li
     return null;
   }
 
-  const matches = events.filter((event) => eventMatchesLife(event, life));
+  const matches = runtimeEvents.filter((event) => eventMatchesLife(event, life));
   if (matches.length === 0) {
     return null;
   }
@@ -370,6 +376,40 @@ export function eventMatchesLife(event: LifeEvent, life: GameLifeState): boolean
     return false;
   }
   return true;
+}
+
+function mapP1EventToLifeEvent(event: P1EventCatalogItem): LifeEvent {
+  const [minAge, maxAge] = getP1EventAgeRange(event.stage);
+
+  return {
+    id: event.id,
+    textKey: event.summaryKey ?? event.titleKey,
+    minAge,
+    maxAge,
+    weight: event.weight,
+    tags: ['p1', event.stage],
+    choices: [
+      {
+        id: P1_CATALOG_EVENT_CHOICE_ID,
+        textKey: P1_CATALOG_EVENT_CHOICE_KEY,
+        resultKey: P1_CATALOG_EVENT_RESULT_KEY,
+        effects: event.effects,
+      },
+    ],
+  };
+}
+
+function getP1EventAgeRange(stage: P1EventStage): [number, number] {
+  if (stage === 'child') {
+    return [1, 12];
+  }
+  if (stage === 'school') {
+    return [6, 17];
+  }
+  if (stage === 'adult') {
+    return [18, 64];
+  }
+  return [65, 100];
 }
 
 function hasActiveJob(life: GameLifeState): boolean {

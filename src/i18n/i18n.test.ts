@@ -5,6 +5,7 @@ import { enUS } from './locales/en-US';
 import { zhCN } from './locales/zh-CN';
 
 const p1PanelKeys = ['ui.profile', 'ui.assets', 'ui.health', 'ui.crime', 'ui.prison', 'ui.achievements'] as const;
+const p1RuntimeEventKeys = ['event.p1Catalog.choice.continue', 'event.p1Catalog.result'] as const;
 
 describe('translate', () => {
   it('returns Simplified Chinese text for known keys', () => {
@@ -38,6 +39,13 @@ describe('translate', () => {
 
   it('contains P1 panel labels in both locales', () => {
     for (const key of p1PanelKeys) {
+      expect(enUS[key]).toBeTypeOf('string');
+      expect(zhCN[key]).toBeTypeOf('string');
+    }
+  });
+
+  it('contains generic P1 catalog event choice and result text in both locales', () => {
+    for (const key of p1RuntimeEventKeys) {
       expect(enUS[key]).toBeTypeOf('string');
       expect(zhCN[key]).toBeTypeOf('string');
     }

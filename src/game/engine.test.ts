@@ -412,6 +412,47 @@ describe('life engine', () => {
     expect(eventMatchesLife(workEvent, employed)).toBe(true);
   });
 
+  it('includes P1 catalog events in the runtime picker and applies their choice effects', () => {
+    const baseAdult = ageUpTo(
+      createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 16 }),
+      18,
+    );
+    const adult: LifeState = {
+      ...baseAdult,
+      currentEvent: null,
+      character: {
+        ...baseAdult.character,
+        attributes: { happiness: 50, health: 50, smarts: 50, looks: 50 },
+        money: 10000,
+      },
+    };
+    const picked = Array.from({ length: 300 }, (_, index) => pickNextEvent(adult, `p1-catalog-${index}`))
+      .find((event): event is LifeEvent => event?.id.startsWith('p1_event.') === true);
+
+    if (picked === undefined) {
+      throw new Error('Expected the runtime picker to include at least one P1 catalog event');
+    }
+    expect(picked).toMatchObject({
+      minAge: 18,
+      maxAge: 64,
+      tags: expect.arrayContaining(['p1', 'adult']),
+    });
+    expect(picked.choices).toEqual([
+      expect.objectContaining({
+        id: 'catalog_effect',
+        textKey: 'event.p1Catalog.choice.continue',
+        resultKey: 'event.p1Catalog.result',
+      }),
+    ]);
+
+    const choice = picked.choices[0];
+    const result = applyChoice({ ...adult, currentEvent: picked }, choice.id);
+
+    expect(result.currentEvent).toBeNull();
+    expect(result.log[0].textKey).toBe('event.p1Catalog.result');
+    expect(result.character.attributes).not.toEqual(adult.character.attributes);
+  });
+
   it('applies activity effects immutably and clamps attributes', () => {
     const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
     const next = applyActivity(life, {

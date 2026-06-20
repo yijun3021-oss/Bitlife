@@ -30,5 +30,37 @@ function isUnlockedByState(life: LifeStateV2, achievement: AchievementCatalogIte
     return life.stats.prisonYears >= achievement.targetValue;
   }
 
-  return false;
+  return getGenericAchievementProgress(life, achievement) >= achievement.targetValue;
+}
+
+function getGenericAchievementProgress(life: LifeStateV2, achievement: AchievementCatalogItem): number {
+  if (achievement.category === 'longevity') {
+    return life.character.age;
+  }
+  if (achievement.category === 'wealth') {
+    return life.character.money + life.assets.reduce((total, asset) => total + asset.value, 0);
+  }
+  if (achievement.category === 'career') {
+    return Math.max(
+      life.career.currentJobId === null ? 0 : 1,
+      life.career.yearsInRole,
+      life.stats.workYears,
+      life.stats.totalIncome,
+    );
+  }
+  if (achievement.category === 'relationship') {
+    return Math.max(
+      life.relationships.filter((relationship) => relationship.alive).length,
+      life.family.childrenIds.length + (life.family.spouseId === null ? 0 : 1),
+      life.family.marriageCount,
+      life.family.adoptionCount,
+      ...life.relationships.map((relationship) => relationship.closeness),
+    );
+  }
+  return Math.max(
+    life.stats.crimesSucceeded,
+    life.stats.prisonYears,
+    life.criminalRecord.arrests.length,
+    life.criminalRecord.convictions.length,
+  );
 }
