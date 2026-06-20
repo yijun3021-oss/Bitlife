@@ -1,9 +1,10 @@
-import type { LifeState, Locale } from '../game/types';
+import type { LifeStateV2 } from '../game/lifeStateV2';
+import type { Locale } from '../game/types';
 import { translate } from '../i18n';
 import { LocaleSwitcher } from './LocaleSwitcher';
 
 interface DeathSummaryProps {
-  life: LifeState;
+  life: LifeStateV2;
   onNewLife(): void;
   onLocaleChange(locale: Locale): void;
 }
@@ -38,6 +39,19 @@ export function DeathSummary({ life, onLocaleChange, onNewLife }: DeathSummaryPr
           </dl>
         )}
         <section className="summary-section">
+          <h2>{label(locale, 'ui.achievements', 'Achievements')}</h2>
+          <ul className="summary-list">
+            <li>
+              <span>{label(locale, 'ui.unlocked', 'Unlocked')}</span>
+              <strong>{life.achievements.unlocked.length}</strong>
+            </li>
+            <li>
+              <span>{label(locale, 'ui.prisonYears', 'Prison years')}</span>
+              <strong>{life.stats.prisonYears}</strong>
+            </li>
+          </ul>
+        </section>
+        <section className="summary-section">
           <h2>{translate(locale, 'ui.label.finalRelationships')}</h2>
           <ul className="summary-list">
             {life.relationships.map((relationship) => (
@@ -71,4 +85,9 @@ export function DeathSummary({ life, onLocaleChange, onNewLife }: DeathSummaryPr
 
 function formatMoney(value: number): string {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(value);
+}
+
+function label(locale: Locale, key: string, fallback: string): string {
+  const translated = translate(locale, key);
+  return translated === key ? fallback : translated;
 }

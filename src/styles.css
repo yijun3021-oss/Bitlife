@@ -257,6 +257,15 @@ ol {
   padding-bottom: 12px;
 }
 
+.screen-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.screen-stack--life {
+  padding-bottom: 12px;
+}
+
 .life-story-panel {
   min-height: 202px;
   padding: 10px 0;
@@ -320,6 +329,20 @@ ol {
   font-size: 12px;
   font-weight: 900;
   line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.panel-subsection {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.section-kicker {
+  color: #657889;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.1;
   text-transform: uppercase;
 }
 
@@ -597,6 +620,18 @@ select {
   font-size: 10px;
   font-weight: 900;
   line-height: 1.05;
+}
+
+.relationship-action-button--danger {
+  background: #c44c42;
+}
+
+.relationship-footer-actions {
+  padding: 0 10px 10px;
+}
+
+.relationship-footer-actions .secondary-button {
+  width: 100%;
 }
 
 .event-panel {

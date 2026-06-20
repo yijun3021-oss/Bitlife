@@ -1,10 +1,11 @@
 import { activities } from '../content/activities';
 import { jobs } from '../content/jobs';
-import type { AttributeName, LifeState } from '../game/types';
+import type { LifeStateV2 } from '../game/lifeStateV2';
+import type { AttributeName } from '../game/types';
 import { translate } from '../i18n';
 
 interface ActivityPanelProps {
-  life: LifeState;
+  life: LifeStateV2;
   onRun(activityId: string): void;
   onChooseJob(jobId: string): void;
 }
@@ -108,7 +109,7 @@ export function ActivityPanel({ life, onChooseJob, onRun }: ActivityPanelProps) 
   );
 }
 
-function formatCost(cost: number, locale: LifeState['locale']): string {
+function formatCost(cost: number, locale: LifeStateV2['locale']): string {
   if (cost === 0) {
     return translate(locale, 'ui.cost.free');
   }
@@ -121,7 +122,7 @@ function formatSalary(salary: number): string {
 
 function formatEffects(
   effects: (typeof activities)[number]['effects'],
-  locale: LifeState['locale'],
+  locale: LifeStateV2['locale'],
 ): string {
   const parts: string[] = [];
 

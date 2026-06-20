@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ageUp, createNewLife } from '../game/engine';
+import type { LifeStateV2 } from '../game/lifeStateV2';
+import { migrateLifeState } from '../game/migrations';
 import type { LifeState } from '../game/types';
 import { SAVE_KEY, useLifeStore } from './lifeStore';
 
@@ -35,7 +37,7 @@ describe('life store', () => {
   });
 
   it('does not age up or save while a yearly event is unresolved', () => {
-    const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
+    const life = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }));
     useLifeStore.setState({ life, activeTab: 'activities' });
 
     useLifeStore.getState().ageUpLife();
@@ -305,7 +307,7 @@ describe('life store', () => {
   });
 
   it('applies relationship interactions to a specific family member', () => {
-    const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'en-US', seed: 12 });
+    const life = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'en-US', seed: 12 }));
     const mother = life.relationships.find((relationship) => relationship.type === 'mother');
     if (mother === undefined) {
       throw new Error('Expected mother relationship');
@@ -350,10 +352,10 @@ describe('life store', () => {
   });
 
   it('runs find job activity through engine behavior for an eligible adult', () => {
-    const adult = ageUpTo(
+    const adult = migrateLifeState(ageUpTo(
       createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }),
       18,
-    );
+    ));
     useLifeStore.setState({ life: adult });
 
     useLifeStore.getState().runActivity('find_job');
@@ -363,10 +365,10 @@ describe('life store', () => {
   });
 
   it('prevents once-per-year activities until the life ages up', () => {
-    const life = {
+    const life = migrateLifeState({
       ...createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }),
       currentEvent: null,
-    };
+    });
     useLifeStore.setState({ life });
 
     useLifeStore.getState().runActivity('rest');
@@ -383,7 +385,7 @@ describe('life store', () => {
   });
 
   it('does not write a save for invalid activity ids or underage find job', () => {
-    const infant = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
+    const infant = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }));
     useLifeStore.setState({ life: infant });
 
     useLifeStore.getState().runActivity('missing_activity');
@@ -394,10 +396,10 @@ describe('life store', () => {
   });
 
   it('does not write a save for invalid choices or missing current events', () => {
-    const life = {
+    const life = migrateLifeState({
       ...createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }),
       currentEvent: null,
-    };
+    });
     useLifeStore.setState({ life });
 
     useLifeStore.getState().chooseEvent('missing_choice');
@@ -407,8 +409,8 @@ describe('life store', () => {
   });
 
   it('does not age up, retab, or save an already dead life', () => {
-    const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
-    const deadLife: LifeState = {
+    const life = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }));
+    const deadLife: LifeStateV2 = {
       ...life,
       character: {
         ...life.character,

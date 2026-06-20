@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../App';
 import { createNewLife } from '../game/engine';
-import type { LifeState } from '../game/types';
+import type { LifeStateV2 } from '../game/lifeStateV2';
+import { migrateLifeState } from '../game/migrations';
 import { SAVE_KEY, useLifeStore } from '../store/lifeStore';
 
 describe('App', () => {
@@ -278,13 +279,13 @@ describe('App', () => {
   });
 
   it('translates known statuses instead of showing internal codes', () => {
-    const life = createNewLife({
+    const life = migrateLifeState(createNewLife({
       name: 'Alex Reed',
       gender: 'female',
       countryId: 'us',
       locale: 'en-US',
       seed: 'status-test',
-    });
+    }));
     useLifeStore.setState({
       locale: 'en-US',
       life: { ...life, statuses: ['injured'] },
@@ -298,13 +299,13 @@ describe('App', () => {
   });
 
   it('uses a localized fallback for unknown statuses', () => {
-    const life = createNewLife({
+    const life = migrateLifeState(createNewLife({
       name: 'Alex Reed',
       gender: 'female',
       countryId: 'us',
       locale: 'en-US',
       seed: 'unknown-status-test',
-    });
+    }));
     useLifeStore.setState({
       locale: 'en-US',
       life: { ...life, statuses: ['mystery_status'] },
@@ -352,8 +353,8 @@ function makeLife({
 }: {
   age: number;
   alive?: boolean;
-  locale: LifeState['locale'];
-}): LifeState {
+  locale: LifeStateV2['locale'];
+}): LifeStateV2 {
   const life = createNewLife({
     name: 'Mina Lin',
     gender: 'female',
@@ -362,7 +363,7 @@ function makeLife({
     seed: `app-test-${age}-${locale}`,
   });
 
-  return {
+  return migrateLifeState({
     ...life,
     character: { ...life.character, age, alive },
     school: age < 18 ? life.school : { stage: 'finished', grade: 0, stress: 0 },
@@ -370,5 +371,5 @@ function makeLife({
     deathSummary: alive
       ? null
       : { age, causeKey: 'death.oldAge', netWorth: life.character.money, logKey: 'log.death' },
-  };
+  });
 }

@@ -1,10 +1,10 @@
-import type { LifeState } from '../game/types';
+import type { LifeStateV2 } from '../game/lifeStateV2';
 import { translate } from '../i18n';
 import { EventCard } from './EventCard';
 import { StatusBars } from './StatusBars';
 
 interface DashboardProps {
-  life: LifeState;
+  life: LifeStateV2;
   onChoose(choiceId: string): void;
 }
 
