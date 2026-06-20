@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { translate } from './index';
+import { enUS } from './locales/en-US';
+import { zhCN } from './locales/zh-CN';
+
+const p1PanelKeys = ['ui.profile', 'ui.assets', 'ui.health', 'ui.crime', 'ui.prison', 'ui.achievements'] as const;
 
 describe('translate', () => {
   it('returns Simplified Chinese text for known keys', () => {
@@ -30,6 +34,13 @@ describe('translate', () => {
       '前任',
       '孩子',
     ]);
+  });
+
+  it('contains P1 panel labels in both locales', () => {
+    for (const key of p1PanelKeys) {
+      expect(enUS[key]).toBeTypeOf('string');
+      expect(zhCN[key]).toBeTypeOf('string');
+    }
   });
 
   it('interpolates placeholder values', () => {
