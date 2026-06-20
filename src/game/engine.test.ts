@@ -21,6 +21,7 @@ import { migrateLifeState } from './migrations';
 import { createSeededRandom, pickWeighted } from './random';
 import { buyAsset } from './systems/assetSystem';
 import { applyForCareer } from './systems/careerSystem';
+import { attemptCrime } from './systems/crimeSystem';
 import { contractDisease } from './systems/healthSystem';
 import { addRelationship } from './systems/relationshipSystem';
 import type { LifeStateV2 } from './lifeStateV2';
@@ -529,6 +530,16 @@ describe('life engine', () => {
     const result: LifeStateV2 = ageUp(sick, 'assets-health-engine');
     expect(result.assets[0].value).toBeLessThan(sick.assets[0].value);
     expect(result.character.attributes.health).toBeLessThan(sick.character.attributes.health);
+  });
+
+  it('settles prison and unlocks achievements during age up for v2 lives', () => {
+    const base = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'us', locale: 'en-US', seed: 72 }));
+    const adult = { ...base, currentEvent: null, character: { ...base.character, age: 25 } };
+    const prisoner = attemptCrime(adult, 'crime.bank_robbery', 0.99);
+    const result: LifeStateV2 = ageUp(prisoner, 'crime-prison-achievement-engine');
+
+    expect(result.stats.prisonYears).toBe(1);
+    expect(result.achievements.unlocked).toContain('achievement.second_chance');
   });
 
   it('does not double settle legacy job salary for v2 lives with P1 careers', () => {
