@@ -13,9 +13,6 @@ import { GameHeader } from './ui/GameHeader';
 import { LocaleSwitcher } from './ui/LocaleSwitcher';
 import { AchievementsPanel } from './ui/panels/AchievementsPanel';
 import { AssetsPanel } from './ui/panels/AssetsPanel';
-import { CrimePanel } from './ui/panels/CrimePanel';
-import { HealthPanel } from './ui/panels/HealthPanel';
-import { PrisonPanel } from './ui/panels/PrisonPanel';
 import { ProfilePanel } from './ui/ProfilePanel';
 import { RelationshipsPanel } from './ui/RelationshipsPanel';
 import { SchoolWorkPanel } from './ui/SchoolWorkPanel';
@@ -29,8 +26,6 @@ export function App() {
     ageUpLife,
     applyForCareer,
     askOnDate,
-    attemptAppeal,
-    attemptCrime,
     buyAsset,
     chooseEvent,
     chooseJob,
@@ -49,7 +44,6 @@ export function App() {
     setActiveTab,
     setLocale,
     sellAsset,
-    treatDisease,
   } = useLifeStore();
   const [eventResult, setEventResult] = useState<{ lifeId: string; textKey: string } | null>(null);
   const loadedLifeId = life?.character.id ?? null;
@@ -106,12 +100,6 @@ export function App() {
         {activeTab === 'life' && (
           <div className="screen-stack screen-stack--life">
             <Dashboard life={activeLife} onChoose={handleChooseEvent} />
-            <ProfilePanel life={activeLife} />
-            <AssetsPanel life={activeLife} onBuyAsset={buyAsset} onSellAsset={sellAsset} />
-            <HealthPanel life={activeLife} onTreatDisease={treatDisease} />
-            <CrimePanel life={activeLife} onAttemptCrime={attemptCrime} />
-            <PrisonPanel life={activeLife} onAttemptAppeal={attemptAppeal} />
-            <AchievementsPanel life={activeLife} />
           </div>
         )}
         {activeTab === 'relationships' && (
@@ -129,22 +117,27 @@ export function App() {
         )}
         {activeTab === 'activities' && <ActivityPanel life={activeLife} onChooseJob={chooseJob} onRun={runActivity} />}
         {activeTab === 'profile' && (
-          <section className="panel">
-            <div className="profile-header">
-              <p className="panel-title">{activeLife.character.name}</p>
-              <LocaleSwitcher locale={locale} onLocaleChange={setLocale} />
-            </div>
-            <dl className="detail-list">
-              <div>
-                <dt>{translate(locale, 'ui.label.country')}</dt>
-                <dd>{translate(locale, `country.${activeLife.character.countryId}`)}</dd>
+          <div className="screen-stack">
+            <section className="panel">
+              <div className="profile-header">
+                <p className="panel-title">{activeLife.character.name}</p>
+                <LocaleSwitcher locale={locale} onLocaleChange={setLocale} />
               </div>
-              <div>
-                <dt>{translate(locale, 'ui.label.status')}</dt>
-                <dd>{formatStatuses(activeLife.statuses, locale)}</dd>
-              </div>
-            </dl>
-          </section>
+              <dl className="detail-list">
+                <div>
+                  <dt>{translate(locale, 'ui.label.country')}</dt>
+                  <dd>{translate(locale, `country.${activeLife.character.countryId}`)}</dd>
+                </div>
+                <div>
+                  <dt>{translate(locale, 'ui.label.status')}</dt>
+                  <dd>{formatStatuses(activeLife.statuses, locale)}</dd>
+                </div>
+              </dl>
+            </section>
+            <ProfilePanel life={activeLife} />
+            <AssetsPanel life={activeLife} onBuyAsset={buyAsset} onSellAsset={sellAsset} />
+            <AchievementsPanel life={activeLife} />
+          </div>
         )}
       </div>
       <div className="bottom-hud">

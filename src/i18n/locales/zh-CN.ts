@@ -110,6 +110,7 @@ export const zhCN = {
   'ui.label.money': '现金',
   'ui.label.country': '国家',
   'ui.label.currentEvent': '今年事件',
+  'ui.label.lifeTimeline': '人生时间线',
   'ui.label.eventResult': '结果',
   'ui.label.lifeLog': '人生记录',
   'ui.label.relationships': '家庭关系',

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../App';
@@ -15,15 +15,51 @@ describe('P1 app integration', () => {
     useLifeStore.getState().setLocale('en-US');
   });
 
-  it('shows P1 panels after life creation', async () => {
+  it('keeps archive and activity panels out of the life timeline page', async () => {
     render(<App />);
     await userEvent.type(screen.getByLabelText(/name/i), 'Mina Lin');
     await userEvent.click(screen.getByRole('button', { name: /create life/i }));
+
+    const screenArea = document.querySelector('.screen-area');
+    expect(screenArea).not.toBeNull();
+
+    expect(within(screenArea as HTMLElement).queryByRole('heading', { name: /profile/i })).not.toBeInTheDocument();
+    expect(within(screenArea as HTMLElement).queryByRole('heading', { name: /assets/i })).not.toBeInTheDocument();
+    expect(within(screenArea as HTMLElement).queryByRole('heading', { name: /health/i })).not.toBeInTheDocument();
+    expect(within(screenArea as HTMLElement).queryByRole('heading', { name: /crime/i })).not.toBeInTheDocument();
+    expect(within(screenArea as HTMLElement).queryByRole('heading', { name: /achievements/i })).not.toBeInTheDocument();
+  });
+
+  it('keeps assets and achievements inside the profile archive', async () => {
+    render(<App />);
+    await userEvent.type(screen.getByLabelText(/name/i), 'Mina Lin');
+    await userEvent.click(screen.getByRole('button', { name: /create life/i }));
+    await userEvent.click(screen.getByRole('button', { name: /profile/i }));
+
     expect(screen.getByRole('heading', { name: /profile/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /assets/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /health/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /crime/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /achievements/i })).toBeInTheDocument();
+  });
+
+  it('keeps crime actions in activities instead of the life timeline page', async () => {
+    render(<App />);
+    await userEvent.type(screen.getByLabelText(/name/i), 'Mina Lin');
+    await userEvent.click(screen.getByRole('button', { name: /create life/i }));
+
+    const life = useLifeStore.getState().life;
+    if (life === null) {
+      throw new Error('Expected created life');
+    }
+
+    act(() => {
+      useLifeStore.setState({
+        life: { ...life, character: { ...life.character, age: 18 }, currentEvent: null },
+      });
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: /activities/i }));
+
+    expect(await screen.findByText('Crime')).toBeInTheDocument();
   });
 
   it('keeps the four status bars in the fixed bottom area', async () => {
@@ -31,23 +67,54 @@ describe('P1 app integration', () => {
     await userEvent.type(screen.getByLabelText(/name/i), 'Mina Lin');
     await userEvent.click(screen.getByRole('button', { name: /create life/i }));
 
+    const timeline = screen.getByRole('region', { name: /life timeline/i });
     const statusBars = screen.getByRole('group', { name: /stats/i });
 
     expect(statusBars.closest('.bottom-status-panel')).not.toBeNull();
     expect(statusBars.closest('.life-dashboard')).toBeNull();
+    expect(statusBars.closest('.life-timeline')).toBeNull();
+    expect(timeline.closest('.bottom-status-panel')).toBeNull();
   });
 
-  it('combines age, current event, and life log in one dashboard card', async () => {
+  it('renders the central area as a scrollable life timeline with pending event context', async () => {
     render(<App />);
     await userEvent.type(screen.getByLabelText(/name/i), 'Mina Lin');
     await userEvent.click(screen.getByRole('button', { name: /create life/i }));
 
-    const combo = screen.getByText(/Age:/).closest('.life-dashboard-combo');
+    const timeline = screen.getByRole('region', { name: /life timeline/i });
 
-    expect(combo).not.toBeNull();
-    expect(combo?.querySelector('.life-story-panel')).not.toBeNull();
-    expect(combo?.querySelector('.event-panel')).not.toBeNull();
-    expect(combo?.querySelector('.log-panel')).not.toBeNull();
-    expect(combo?.querySelector('.status-bars')).toBeNull();
+    expect(timeline.closest('.screen-area')).not.toBeNull();
+    expect(timeline.querySelector('.life-timeline__entries')).not.toBeNull();
+    expect(timeline.querySelector('.event-panel')).not.toBeNull();
+    expect(timeline.querySelector('.status-bars')).toBeNull();
+    expect(within(timeline).getByText(/Age:/)).toBeInTheDocument();
+  });
+
+  it('keeps previous years available in the central timeline history', async () => {
+    render(<App />);
+    await userEvent.type(screen.getByLabelText(/name/i), 'Mina Lin');
+    await userEvent.click(screen.getByRole('button', { name: /create life/i }));
+
+    await resolvePendingEvent();
+
+    for (let index = 0; index < 4; index += 1) {
+      await userEvent.click(screen.getByRole('button', { name: /age up/i }));
+      await resolvePendingEvent();
+    }
+
+    const timeline = screen.getByRole('region', { name: /life timeline/i });
+
+    expect(timeline.querySelectorAll('.life-timeline__entry').length).toBeGreaterThan(5);
   });
 });
+
+async function resolvePendingEvent() {
+  const eventDialog = screen.queryByRole('dialog', { name: /this year/i });
+
+  if (eventDialog === null) {
+    return;
+  }
+
+  await userEvent.click(within(eventDialog).getAllByRole('button')[0]);
+  await userEvent.click(await screen.findByRole('dialog', { name: /result/i }));
+}
