@@ -36,4 +36,18 @@ describe('P1 app integration', () => {
     expect(statusBars.closest('.bottom-status-panel')).not.toBeNull();
     expect(statusBars.closest('.life-dashboard')).toBeNull();
   });
+
+  it('combines age, current event, and life log in one dashboard card', async () => {
+    render(<App />);
+    await userEvent.type(screen.getByLabelText(/name/i), 'Mina Lin');
+    await userEvent.click(screen.getByRole('button', { name: /create life/i }));
+
+    const combo = screen.getByText(/Age:/).closest('.life-dashboard-combo');
+
+    expect(combo).not.toBeNull();
+    expect(combo?.querySelector('.life-story-panel')).not.toBeNull();
+    expect(combo?.querySelector('.event-panel')).not.toBeNull();
+    expect(combo?.querySelector('.log-panel')).not.toBeNull();
+    expect(combo?.querySelector('.status-bars')).toBeNull();
+  });
 });
