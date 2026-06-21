@@ -17,6 +17,7 @@ import { PrisonPanel } from './ui/panels/PrisonPanel';
 import { ProfilePanel } from './ui/ProfilePanel';
 import { RelationshipsPanel } from './ui/RelationshipsPanel';
 import { SchoolWorkPanel } from './ui/SchoolWorkPanel';
+import { StatusBars } from './ui/StatusBars';
 import { Tabs } from './ui/Tabs';
 
 export function App() {
@@ -121,13 +122,18 @@ export function App() {
           </section>
         )}
       </div>
-      <Tabs
-        activeTab={activeTab}
-        ageUpDisabled={hasPendingEvent}
-        locale={locale}
-        onAgeUp={ageUpLife}
-        onTabChange={(tab: ActiveTab) => setActiveTab(tab)}
-      />
+      <div className="bottom-hud">
+        <Tabs
+          activeTab={activeTab}
+          ageUpDisabled={hasPendingEvent}
+          locale={locale}
+          onAgeUp={ageUpLife}
+          onTabChange={(tab: ActiveTab) => setActiveTab(tab)}
+        />
+        <div className="bottom-status-panel">
+          <StatusBars attributes={activeLife.character.attributes} locale={locale} />
+        </div>
+      </div>
     </main>
   );
 }

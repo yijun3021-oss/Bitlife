@@ -1,7 +1,6 @@
 import type { LifeStateV2 } from '../game/lifeStateV2';
 import { translate } from '../i18n';
 import { EventCard } from './EventCard';
-import { StatusBars } from './StatusBars';
 
 interface DashboardProps {
   life: LifeStateV2;
@@ -37,7 +36,6 @@ export function Dashboard({ life, onChoose }: DashboardProps) {
           ))}
         </ol>
       </section>
-      <StatusBars attributes={character.attributes} locale={locale} />
     </div>
   );
 }
