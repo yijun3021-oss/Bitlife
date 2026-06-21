@@ -110,6 +110,7 @@ export const enUS = {
   'ui.label.money': 'Cash',
   'ui.label.country': 'Country',
   'ui.label.currentEvent': 'This year',
+  'ui.label.lifeTimeline': 'Life timeline',
   'ui.label.eventResult': 'Result',
   'ui.label.lifeLog': 'Life log',
   'ui.label.relationships': 'Family',

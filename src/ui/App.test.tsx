@@ -146,6 +146,28 @@ describe('App', () => {
     expect(screen.queryByRole('dialog', { name: 'Result' })).not.toBeInTheDocument();
   });
 
+  it('records yearly event results in the central life timeline', async () => {
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'English' }));
+    await userEvent.type(screen.getByLabelText('Name'), 'Mina Lin');
+    await userEvent.click(screen.getByRole('button', { name: 'Create life' }));
+
+    const eventDialog = screen.getByRole('dialog', { name: 'This year' });
+    await userEvent.click(within(eventDialog).getAllByRole('button')[0]);
+
+    const resultDialog = screen.getByRole('dialog', { name: 'Result' });
+    const resultMessage = resultDialog.querySelector('.event-modal-text')?.textContent;
+    expect(resultMessage).toBeTruthy();
+
+    await userEvent.click(resultDialog);
+
+    const timeline = screen.getByRole('region', { name: 'Life timeline' });
+    const history = timeline.querySelector('.life-timeline__entries');
+    expect(history).not.toBeNull();
+    expect(within(history as HTMLElement).getByText(resultMessage!)).toBeInTheDocument();
+  });
+
   it('shows activity costs and gives feedback after running an activity', async () => {
     const adult = makeLife({ age: 18, locale: 'en-US' });
     useLifeStore.setState({
@@ -161,6 +183,21 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: /Rest/ }));
 
     expect(screen.getByText('You took time to rest.')).toBeInTheDocument();
+  });
+
+  it('records activity results in the central life timeline', async () => {
+    const adult = makeLife({ age: 18, locale: 'en-US' });
+    useLifeStore.setState({
+      locale: 'en-US',
+      life: { ...adult, character: { ...adult.character, money: 500 }, currentEvent: null },
+      activeTab: 'activities',
+    });
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: /Rest/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Life' }));
+
+    expect(within(getTimelineHistory()).getByText('You took time to rest.')).toBeInTheDocument();
   });
 
   it('locks rest for the current year and unlocks it after aging up', async () => {
@@ -274,6 +311,21 @@ describe('App', () => {
     expect(within(workPanel!).getByText('61')).toBeInTheDocument();
     expect(within(workPanel!).getByText('Years in role')).toBeInTheDocument();
     expect(within(workPanel!).getByText('3')).toBeInTheDocument();
+  });
+
+  it('records career changes in the central life timeline', async () => {
+    const adult = makeLife({ age: 18, locale: 'en-US' });
+    useLifeStore.setState({
+      locale: 'en-US',
+      life: { ...adult, currentEvent: null },
+      activeTab: 'activities',
+    });
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: /Cashier/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Life' }));
+
+    expect(within(getTimelineHistory()).getByText('You accepted a new job.')).toBeInTheDocument();
   });
 
   it('uses English form labels and actions after switching language', async () => {
@@ -413,6 +465,21 @@ describe('App', () => {
     expect(screen.getByText(/You talked with/)).toBeInTheDocument();
   });
 
+  it('records relationship changes in the central life timeline', async () => {
+    const life = makeLife({ age: 8, locale: 'en-US' });
+    const mother = life.relationships.find((relationship) => relationship.type === 'mother');
+    if (mother === undefined) {
+      throw new Error('Expected mother relationship');
+    }
+    useLifeStore.setState({ locale: 'en-US', life, activeTab: 'relationships' });
+    render(<App />);
+
+    await userEvent.click(within(screen.getByText(new RegExp(mother.name)).closest('article')!).getByRole('button', { name: 'Talk' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Life' }));
+
+    expect(within(getTimelineHistory()).getByText(/You talked with/)).toBeInTheDocument();
+  });
+
   it('shows final relationships and timeline on the death summary', () => {
     const deadLife = makeLife({ age: 88, locale: 'en-US', alive: false });
     useLifeStore.setState({ locale: 'en-US', life: deadLife });
@@ -451,4 +518,14 @@ function makeLife({
       ? null
       : { age, causeKey: 'death.oldAge', netWorth: life.character.money, logKey: 'log.death' },
   });
+}
+
+function getTimelineHistory(): HTMLElement {
+  const timeline = screen.getByRole('region', { name: 'Life timeline' });
+  const history = timeline.querySelector('.life-timeline__entries');
+  if (!(history instanceof HTMLElement)) {
+    throw new Error('Expected life timeline history');
+  }
+
+  return history;
 }
