@@ -1,12 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { migrateLifeState } from './game/migrations';
 import type { Locale } from './game/types';
+import { PASS_EVENT_CHOICE_ID } from './game/types';
 import { translate } from './i18n';
 import { useLifeStore, type ActiveTab } from './store/lifeStore';
 import { ActivityPanel } from './ui/ActivityPanel';
 import { CreateLife } from './ui/CreateLife';
 import { Dashboard } from './ui/Dashboard';
 import { DeathSummary } from './ui/DeathSummary';
+import { EventModal } from './ui/EventModal';
 import { GameHeader } from './ui/GameHeader';
 import { LocaleSwitcher } from './ui/LocaleSwitcher';
 import { AchievementsPanel } from './ui/panels/AchievementsPanel';
@@ -49,10 +51,16 @@ export function App() {
     sellAsset,
     treatDisease,
   } = useLifeStore();
+  const [eventResult, setEventResult] = useState<{ lifeId: string; textKey: string } | null>(null);
+  const loadedLifeId = life?.character.id ?? null;
 
   useEffect(() => {
     loadLife();
   }, [loadLife]);
+
+  useEffect(() => {
+    setEventResult(null);
+  }, [loadedLifeId]);
 
   if (life === null) {
     return (
@@ -73,6 +81,23 @@ export function App() {
   }
 
   const hasPendingEvent = activeLife.currentEvent !== null;
+  const eventResultTextKey = eventResult?.lifeId === activeLife.character.id ? eventResult.textKey : null;
+  const handleChooseEvent = (choiceId: string) => {
+    const event = activeLife.currentEvent;
+
+    if (event === null) {
+      return;
+    }
+
+    const resultKey =
+      choiceId === PASS_EVENT_CHOICE_ID ? 'log.eventPassed' : event.choices.find((choice) => choice.id === choiceId)?.resultKey;
+
+    chooseEvent(choiceId);
+
+    if (resultKey !== undefined) {
+      setEventResult({ lifeId: activeLife.character.id, textKey: resultKey });
+    }
+  };
 
   return (
     <main className={`app-shell game-shell game-shell--${activeTab}`}>
@@ -80,7 +105,7 @@ export function App() {
       <div className="screen-area">
         {activeTab === 'life' && (
           <div className="screen-stack screen-stack--life">
-            <Dashboard life={activeLife} onChoose={chooseEvent} />
+            <Dashboard life={activeLife} onChoose={handleChooseEvent} />
             <ProfilePanel life={activeLife} />
             <AssetsPanel life={activeLife} onBuyAsset={buyAsset} onSellAsset={sellAsset} />
             <HealthPanel life={activeLife} onTreatDisease={treatDisease} />
@@ -134,6 +159,13 @@ export function App() {
           <StatusBars attributes={activeLife.character.attributes} locale={locale} />
         </div>
       </div>
+      <EventModal
+        event={activeLife.currentEvent}
+        locale={locale}
+        resultTextKey={eventResultTextKey}
+        onChoose={handleChooseEvent}
+        onDismissResult={() => setEventResult(null)}
+      />
     </main>
   );
 }

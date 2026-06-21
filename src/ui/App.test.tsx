@@ -116,16 +116,34 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'Age up' })).toBeDisabled();
   });
 
-  it('always offers at least two choices for the current yearly event', async () => {
+  it('shows the current yearly event as a modal with at least two choices', async () => {
     render(<App />);
 
     await userEvent.click(screen.getByRole('button', { name: 'English' }));
     await userEvent.type(screen.getByLabelText('Name'), 'Mina Lin');
     await userEvent.click(screen.getByRole('button', { name: 'Create life' }));
 
-    const eventPanel = screen.getByText('This year').closest('section');
-    expect(eventPanel).not.toBeNull();
-    expect(within(eventPanel!).getAllByRole('button').length).toBeGreaterThanOrEqual(2);
+    const eventDialog = screen.getByRole('dialog', { name: 'This year' });
+    expect(within(eventDialog).getAllByRole('button').length).toBeGreaterThanOrEqual(2);
+    expect(eventDialog.closest('.event-modal-backdrop')).not.toBeNull();
+  });
+
+  it('shows the yearly event result as a modal after choosing an option', async () => {
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'English' }));
+    await userEvent.type(screen.getByLabelText('Name'), 'Mina Lin');
+    await userEvent.click(screen.getByRole('button', { name: 'Create life' }));
+
+    const eventDialog = screen.getByRole('dialog', { name: 'This year' });
+    await userEvent.click(within(eventDialog).getAllByRole('button')[0]);
+
+    const resultDialog = screen.getByRole('dialog', { name: 'Result' });
+    expect(resultDialog).toHaveTextContent('tap anywhere to continue');
+
+    await userEvent.click(resultDialog);
+
+    expect(screen.queryByRole('dialog', { name: 'Result' })).not.toBeInTheDocument();
   });
 
   it('shows activity costs and gives feedback after running an activity', async () => {

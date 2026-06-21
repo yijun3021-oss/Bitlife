@@ -24,7 +24,7 @@ export function Dashboard({ life, onChoose }: DashboardProps) {
           </div>
         </div>
 
-        <EventCard event={life.currentEvent} locale={locale} onChoose={onChoose} />
+        <EventCard event={life.currentEvent} interactive={false} locale={locale} onChoose={onChoose} />
 
         <section className="panel log-panel">
           <p className="panel-title">{translate(locale, 'ui.label.lifeLog')}</p>
