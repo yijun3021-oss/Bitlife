@@ -4,11 +4,12 @@ import { translate } from '../i18n';
 
 interface EventCardProps {
   event: LifeEvent | null;
+  interactive?: boolean;
   locale: Locale;
   onChoose(choiceId: string): void;
 }
 
-export function EventCard({ event, locale, onChoose }: EventCardProps) {
+export function EventCard({ event, interactive = true, locale, onChoose }: EventCardProps) {
   if (event === null) {
     return (
       <section className="panel event-panel muted-panel">
@@ -22,27 +23,29 @@ export function EventCard({ event, locale, onChoose }: EventCardProps) {
     <section className="panel event-panel">
       <p className="panel-title">{translate(locale, 'ui.label.currentEvent')}</p>
       <p className="event-text">{translate(locale, event.textKey)}</p>
-      <div className="choice-list">
-        {event.choices.map((choice) => (
-          <button className="primary-button choice-button" key={choice.id} type="button" onClick={() => onChoose(choice.id)}>
-            <span>{translate(locale, choice.textKey)}</span>
-            <small>{formatChoiceEffects(choice, locale)}</small>
-          </button>
-        ))}
-        {event.choices.length < 2 && (
-          <button className="secondary-button choice-button" type="button" onClick={() => onChoose(PASS_EVENT_CHOICE_ID)}>
-            <span>{translate(locale, 'ui.choice.letItPass')}</span>
-            <small>{translate(locale, 'ui.choice.noEffect')}</small>
-          </button>
-        )}
-      </div>
+      {interactive && (
+        <div className="choice-list">
+          {event.choices.map((choice) => (
+            <button className="primary-button choice-button" key={choice.id} type="button" onClick={() => onChoose(choice.id)}>
+              <span>{translate(locale, choice.textKey)}</span>
+              <small>{formatChoiceEffects(choice, locale)}</small>
+            </button>
+          ))}
+          {event.choices.length < 2 && (
+            <button className="secondary-button choice-button" type="button" onClick={() => onChoose(PASS_EVENT_CHOICE_ID)}>
+              <span>{translate(locale, 'ui.choice.letItPass')}</span>
+              <small>{translate(locale, 'ui.choice.noEffect')}</small>
+            </button>
+          )}
+        </div>
+      )}
     </section>
   );
 }
 
 const attributeOrder: AttributeName[] = ['happiness', 'health', 'smarts', 'looks'];
 
-function formatChoiceEffects(choice: LifeEventOption, locale: Locale): string {
+export function formatChoiceEffects(choice: LifeEventOption, locale: Locale): string {
   const parts: string[] = [];
 
   for (const attribute of attributeOrder) {

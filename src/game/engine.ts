@@ -1,8 +1,19 @@
+import { p1Events, type P1EventCatalogItem, type P1EventStage } from '../content/catalog/events';
 import { events } from '../content/events';
 import { jobs } from '../content/jobs';
 import { familyNames, givenNames } from '../content/names';
+import { clampAttribute } from './attributes';
 import { createSeededRandom, pickWeighted, type RandomSource } from './random';
+import { unlockAchievements } from './systems/achievementSystem';
+import { settleAssetYear } from './systems/assetSystem';
+import { settleCareerYear } from './systems/careerSystem';
+import { settleEducationYear } from './systems/educationSystem';
+import { settleFamilyYear } from './systems/familySystem';
+import { settleHealthYear } from './systems/healthSystem';
+import { settlePrisonYear } from './systems/prisonSystem';
+import { settleRelationshipYear } from './systems/relationshipSystem';
 import { PASS_EVENT_CHOICE_ID } from './types';
+import type { LifeStateV2 } from './lifeStateV2';
 import type {
   Attributes,
   EducationStatus,
@@ -27,6 +38,14 @@ interface NewLifeInput {
 }
 
 type ChoiceEffects = LifeEventOption['effects'];
+type GameLifeState = LifeState | LifeStateV2;
+
+const P1_CATALOG_EVENT_CHOICE_ID = 'catalog_effect';
+const P1_CATALOG_EVENT_CHOICE_KEY = 'event.p1Catalog.choice.continue';
+const P1_CATALOG_EVENT_RESULT_KEY = 'event.p1Catalog.result';
+const runtimeEvents: LifeEvent[] = [...events, ...p1Events.map(mapP1EventToLifeEvent)];
+
+export { clampAttribute };
 
 const relationshipInteractions: Record<
   RelationshipActionId,
@@ -36,10 +55,6 @@ const relationshipInteractions: Record<
   spend_time: { closeness: 5, happiness: 2, action: 'spent time with' },
   argue: { closeness: -6, happiness: -1, action: 'argued with' },
 };
-
-export function clampAttribute(value: number): number {
-  return Math.max(0, Math.min(100, Math.round(value)));
-}
 
 export function getLifeStage(age: number): LifeStage {
   if (age <= 2) {
@@ -72,12 +87,12 @@ export function getSchoolState(age: number, previous?: EducationStatus): Educati
   return { stage: 'finished', grade: 0, stress: clampAttribute(stress - 10) };
 }
 
-export function pickNextEvent(life: LifeState, seed: string | number = `${life.character.id}:${life.character.age}`): LifeEvent | null {
+export function pickNextEvent(life: GameLifeState, seed: string | number = `${life.character.id}:${life.character.age}`): LifeEvent | null {
   if (!life.character.alive) {
     return null;
   }
 
-  const matches = events.filter((event) => eventMatchesLife(event, life));
+  const matches = runtimeEvents.filter((event) => eventMatchesLife(event, life));
   if (matches.length === 0) {
     return null;
   }
@@ -181,14 +196,20 @@ export function calculateDeathRisk(age: number, health: number, statuses: string
   return Math.min(0.85, Math.max(0, ageRisk + lowHealthRisk + statusRisk));
 }
 
-export function ageUp(life: LifeState, seed: string | number = `${life.character.id}:age`): LifeState {
+export function ageUp(life: LifeStateV2, seed?: string | number): LifeStateV2;
+export function ageUp(life: LifeState, seed?: string | number): LifeState;
+export function ageUp(
+  life: LifeState | LifeStateV2,
+  seed: string | number = `${life.character.id}:age`,
+): LifeState | LifeStateV2 {
   if (!life.character.alive || life.currentEvent !== null) {
     return life;
   }
 
   const nextAge = life.character.age + 1;
-  const salary = life.job?.salary ?? 0;
-  const agedLife: LifeState = {
+  const shouldSettleLegacyJob = life.version === 1;
+  const salary = shouldSettleLegacyJob ? life.job?.salary ?? 0 : 0;
+  const agedLife: GameLifeState = {
     ...life,
     character: {
       ...life.character,
@@ -196,7 +217,7 @@ export function ageUp(life: LifeState, seed: string | number = `${life.character
       money: life.character.money + salary,
     },
     school: getSchoolState(nextAge, life.school),
-    job: life.job === null ? null : { ...life.job, years: life.job.years + 1 },
+    job: shouldSettleLegacyJob && life.job !== null ? { ...life.job, years: life.job.years + 1 } : life.job,
     usedActivitiesThisAge: [],
     currentEvent: null,
     log: [
@@ -205,7 +226,21 @@ export function ageUp(life: LifeState, seed: string | number = `${life.character
       ...life.log,
     ],
   };
-  const deathCheck = maybeDie(agedLife, createSeededRandom(`${String(seed)}:death:${nextAge}`));
+  const settledLife: GameLifeState =
+    agedLife.version === 2
+      ? unlockAchievements(
+        settleFamilyYear(
+          settleRelationshipYear(
+            settlePrisonYear(
+              settleHealthYear(
+                settleAssetYear(settleCareerYear(settleEducationYear(agedLife as LifeStateV2))),
+              ),
+            ),
+          ),
+        ),
+      )
+      : agedLife;
+  const deathCheck = maybeDie(settledLife, createSeededRandom(`${String(seed)}:death:${nextAge}`));
 
   if (!deathCheck.character.alive) {
     return deathCheck;
@@ -318,14 +353,14 @@ export function interactWithRelationship(
   };
 }
 
-export function eventMatchesLife(event: LifeEvent, life: LifeState): boolean {
+export function eventMatchesLife(event: LifeEvent, life: GameLifeState): boolean {
   if (life.character.age < event.minAge || life.character.age > event.maxAge) {
     return false;
   }
   if (event.requires?.schoolStage !== undefined && event.requires.schoolStage !== life.school.stage) {
     return false;
   }
-  if (event.requires?.hasJob !== undefined && event.requires.hasJob !== (life.job !== null)) {
+  if (event.requires?.hasJob !== undefined && event.requires.hasJob !== hasActiveJob(life)) {
     return false;
   }
   if (!attributesMeetMinimum(life.character.attributes, event.requires?.minAttributes)) {
@@ -341,6 +376,47 @@ export function eventMatchesLife(event: LifeEvent, life: LifeState): boolean {
     return false;
   }
   return true;
+}
+
+function mapP1EventToLifeEvent(event: P1EventCatalogItem): LifeEvent {
+  const [minAge, maxAge] = getP1EventAgeRange(event.stage);
+
+  return {
+    id: event.id,
+    textKey: event.summaryKey ?? event.titleKey,
+    minAge,
+    maxAge,
+    weight: event.weight,
+    tags: ['p1', event.stage],
+    choices: [
+      {
+        id: P1_CATALOG_EVENT_CHOICE_ID,
+        textKey: P1_CATALOG_EVENT_CHOICE_KEY,
+        resultKey: P1_CATALOG_EVENT_RESULT_KEY,
+        effects: event.effects,
+      },
+    ],
+  };
+}
+
+function getP1EventAgeRange(stage: P1EventStage): [number, number] {
+  if (stage === 'child') {
+    return [1, 12];
+  }
+  if (stage === 'school') {
+    return [6, 17];
+  }
+  if (stage === 'adult') {
+    return [18, 64];
+  }
+  return [65, 100];
+}
+
+function hasActiveJob(life: GameLifeState): boolean {
+  if (life.version === 2) {
+    return life.career.currentJobId !== null && !life.career.retired;
+  }
+  return life.job !== null;
 }
 
 function applyEffect(life: LifeState, effect: ChoiceEffects): LifeState {
@@ -428,7 +504,7 @@ function applyStatusEffect(statuses: string[], addStatus?: string, removeStatus?
   return [...removed, addStatus];
 }
 
-function maybeDie(life: LifeState, random: RandomSource): LifeState {
+function maybeDie<TLife extends GameLifeState>(life: TLife, random: RandomSource): TLife {
   const risk = calculateDeathRisk(life.character.age, life.character.attributes.health, life.statuses);
   if (random.next() >= risk) {
     return life;
@@ -449,10 +525,10 @@ function maybeDie(life: LifeState, random: RandomSource): LifeState {
       logKey: 'log.death',
     },
     log: [deathLog, ...life.log],
-  };
+  } as TLife;
 }
 
-function getDeathCauseKey(life: LifeState): 'death.oldAge' | 'death.poorHealth' | 'death.accident' {
+function getDeathCauseKey(life: GameLifeState): 'death.oldAge' | 'death.poorHealth' | 'death.accident' {
   if (life.character.attributes.health <= 25) {
     return 'death.poorHealth';
   }

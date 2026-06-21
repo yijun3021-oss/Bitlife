@@ -1,9 +1,14 @@
-import type { LifeState, RelationshipActionId } from '../game/types';
+import type { LifeStateV2 } from '../game/lifeStateV2';
+import type { RelationshipActionId } from '../game/types';
 import { translate } from '../i18n';
 
 interface RelationshipsPanelProps {
-  life: LifeState;
+  life: LifeStateV2;
+  onAdopt(child: { id: string; name: string }): void;
+  onAskOnDate(relationshipId: string): void;
   onInteract(relationshipId: string, actionId: RelationshipActionId): void;
+  onDivorce(): void;
+  onMarry(relationshipId: string): void;
 }
 
 const relationshipActions: Array<{ id: RelationshipActionId; labelKey: string }> = [
@@ -12,7 +17,7 @@ const relationshipActions: Array<{ id: RelationshipActionId; labelKey: string }>
   { id: 'argue', labelKey: 'ui.relationshipAction.argue' },
 ];
 
-export function RelationshipsPanel({ life, onInteract }: RelationshipsPanelProps) {
+export function RelationshipsPanel({ life, onAdopt, onAskOnDate, onDivorce, onInteract, onMarry }: RelationshipsPanelProps) {
   const latestLog = life.log[0];
   const feedback = latestLog?.textKey === 'log.relationshipInteraction'
     ? translate(life.locale, latestLog.textKey, latestLog.values)
@@ -52,24 +57,55 @@ export function RelationshipsPanel({ life, onInteract }: RelationshipsPanelProps
                     {translate(life.locale, action.labelKey)}
                   </button>
                 ))}
+                {relationship.type === 'friend' && (
+                  <button className="relationship-action-button" type="button" onClick={() => onAskOnDate(relationship.id)}>
+                    {label(life.locale, 'ui.action.date', 'Date')}
+                  </button>
+                )}
+                {relationship.type === 'partner' && (
+                  <button className="relationship-action-button" type="button" onClick={() => onMarry(relationship.id)}>
+                    {label(life.locale, 'ui.action.marry', 'Marry')}
+                  </button>
+                )}
+                {life.family.spouseId === relationship.id && (
+                  <button className="relationship-action-button relationship-action-button--danger" type="button" onClick={onDivorce}>
+                    {label(life.locale, 'ui.action.divorce', 'Divorce')}
+                  </button>
+                )}
               </div>
             </div>
             <img aria-hidden="true" className="menu-chevron" src="https://api.iconify.design/material-symbols:chevron-right-rounded.svg" alt="" />
           </article>
         ))}
       </div>
+      <div className="panel-subsection relationship-footer-actions">
+        <button
+          className="secondary-button"
+          type="button"
+          onClick={() => onAdopt({ id: `child_${life.character.age}_${life.family.childrenIds.length}`, name: label(life.locale, 'ui.defaultChildName', 'Adopted Child') })}
+        >
+          {label(life.locale, 'ui.action.adoptChild', 'Adopt child')}
+        </button>
+      </div>
     </section>
   );
 }
 
-function relationshipLabel(type: LifeState['relationships'][number]['type'], locale: LifeState['locale']): string {
+function relationshipLabel(type: LifeStateV2['relationships'][number]['type'], locale: LifeStateV2['locale']): string {
   return translate(locale, `relationship.${type}`);
 }
 
-function iconUrl(type: LifeState['relationships'][number]['type']): string {
+function iconUrl(type: LifeStateV2['relationships'][number]['type']): string {
   const icon =
     type === 'mother' ? 'fluent-emoji-flat:woman'
     : type === 'father' ? 'fluent-emoji-flat:man'
+    : type === 'partner' || type === 'spouse' ? 'fluent-emoji-flat:couple-with-heart'
+    : type === 'child' ? 'fluent-emoji-flat:child'
     : 'fluent-emoji-flat:person';
   return `https://api.iconify.design/${icon}.svg`;
+}
+
+function label(locale: LifeStateV2['locale'], key: string, fallback: string): string {
+  const translated = translate(locale, key);
+  return translated === key ? fallback : translated;
 }

@@ -1,11 +1,11 @@
 import { getLifeStage } from '../game/engine';
-import type { LifeState } from '../game/types';
+import type { LifeStateV2 } from '../game/lifeStateV2';
 import { translate } from '../i18n';
 import type { ActiveTab } from '../store/lifeStore';
 
 interface GameHeaderProps {
   activeTab: ActiveTab;
-  life: LifeState;
+  life: LifeStateV2;
   onHome(): void;
 }
 
@@ -23,7 +23,7 @@ export function GameHeader({ activeTab, life, onHome }: GameHeaderProps) {
   );
 }
 
-function PlayerStrip({ life }: { life: LifeState }) {
+function PlayerStrip({ life }: { life: LifeStateV2 }) {
   const stage = getLifeStage(life.character.age);
 
   return (

@@ -1,39 +1,66 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { migrateLifeState } from './game/migrations';
 import type { Locale } from './game/types';
+import { PASS_EVENT_CHOICE_ID } from './game/types';
 import { translate } from './i18n';
 import { useLifeStore, type ActiveTab } from './store/lifeStore';
 import { ActivityPanel } from './ui/ActivityPanel';
 import { CreateLife } from './ui/CreateLife';
 import { Dashboard } from './ui/Dashboard';
 import { DeathSummary } from './ui/DeathSummary';
+import { EventModal } from './ui/EventModal';
 import { GameHeader } from './ui/GameHeader';
 import { LocaleSwitcher } from './ui/LocaleSwitcher';
+import { AchievementsPanel } from './ui/panels/AchievementsPanel';
+import { AssetsPanel } from './ui/panels/AssetsPanel';
+import { CrimePanel } from './ui/panels/CrimePanel';
+import { HealthPanel } from './ui/panels/HealthPanel';
+import { PrisonPanel } from './ui/panels/PrisonPanel';
+import { ProfilePanel } from './ui/ProfilePanel';
 import { RelationshipsPanel } from './ui/RelationshipsPanel';
 import { SchoolWorkPanel } from './ui/SchoolWorkPanel';
+import { StatusBars } from './ui/StatusBars';
 import { Tabs } from './ui/Tabs';
 
 export function App() {
   const {
     activeTab,
+    adoptChild,
     ageUpLife,
+    applyForCareer,
+    askOnDate,
+    attemptAppeal,
+    attemptCrime,
+    buyAsset,
     chooseEvent,
     chooseJob,
     clearLife,
     continueLife,
     createLife,
+    divorceSpouse,
+    enrollInProgram,
     interactRelationship,
     life,
     loadLife,
     locale,
+    marryPartner,
     runActivity,
     savedLife,
     setActiveTab,
     setLocale,
+    sellAsset,
+    treatDisease,
   } = useLifeStore();
+  const [eventResult, setEventResult] = useState<{ lifeId: string; textKey: string } | null>(null);
+  const loadedLifeId = life?.character.id ?? null;
 
   useEffect(() => {
     loadLife();
   }, [loadLife]);
+
+  useEffect(() => {
+    setEventResult(null);
+  }, [loadedLifeId]);
 
   if (life === null) {
     return (
@@ -47,45 +74,97 @@ export function App() {
     );
   }
 
-  if (!life.character.alive) {
-    return <DeathSummary life={life} onLocaleChange={setLocale} onNewLife={clearLife} />;
+  const activeLife = migrateLifeState(life);
+
+  if (!activeLife.character.alive) {
+    return <DeathSummary life={activeLife} onLocaleChange={setLocale} onNewLife={clearLife} />;
   }
 
-  const hasPendingEvent = life.currentEvent !== null;
+  const hasPendingEvent = activeLife.currentEvent !== null;
+  const eventResultTextKey = eventResult?.lifeId === activeLife.character.id ? eventResult.textKey : null;
+  const handleChooseEvent = (choiceId: string) => {
+    const event = activeLife.currentEvent;
+
+    if (event === null) {
+      return;
+    }
+
+    const resultKey =
+      choiceId === PASS_EVENT_CHOICE_ID ? 'log.eventPassed' : event.choices.find((choice) => choice.id === choiceId)?.resultKey;
+
+    chooseEvent(choiceId);
+
+    if (resultKey !== undefined) {
+      setEventResult({ lifeId: activeLife.character.id, textKey: resultKey });
+    }
+  };
 
   return (
     <main className={`app-shell game-shell game-shell--${activeTab}`}>
-      <GameHeader activeTab={activeTab} life={life} onHome={() => setActiveTab('life')} />
+      <GameHeader activeTab={activeTab} life={activeLife} onHome={() => setActiveTab('life')} />
       <div className="screen-area">
-        {activeTab === 'life' && <Dashboard life={life} onChoose={chooseEvent} />}
-        {activeTab === 'relationships' && <RelationshipsPanel life={life} onInteract={interactRelationship} />}
-        {activeTab === 'schoolWork' && <SchoolWorkPanel life={life} />}
-        {activeTab === 'activities' && <ActivityPanel life={life} onChooseJob={chooseJob} onRun={runActivity} />}
+        {activeTab === 'life' && (
+          <div className="screen-stack screen-stack--life">
+            <Dashboard life={activeLife} onChoose={handleChooseEvent} />
+            <ProfilePanel life={activeLife} />
+            <AssetsPanel life={activeLife} onBuyAsset={buyAsset} onSellAsset={sellAsset} />
+            <HealthPanel life={activeLife} onTreatDisease={treatDisease} />
+            <CrimePanel life={activeLife} onAttemptCrime={attemptCrime} />
+            <PrisonPanel life={activeLife} onAttemptAppeal={attemptAppeal} />
+            <AchievementsPanel life={activeLife} />
+          </div>
+        )}
+        {activeTab === 'relationships' && (
+          <RelationshipsPanel
+            life={activeLife}
+            onAdopt={adoptChild}
+            onAskOnDate={askOnDate}
+            onDivorce={divorceSpouse}
+            onInteract={interactRelationship}
+            onMarry={marryPartner}
+          />
+        )}
+        {activeTab === 'schoolWork' && (
+          <SchoolWorkPanel life={activeLife} onApplyForCareer={applyForCareer} onEnroll={enrollInProgram} />
+        )}
+        {activeTab === 'activities' && <ActivityPanel life={activeLife} onChooseJob={chooseJob} onRun={runActivity} />}
         {activeTab === 'profile' && (
           <section className="panel">
             <div className="profile-header">
-              <p className="panel-title">{life.character.name}</p>
+              <p className="panel-title">{activeLife.character.name}</p>
               <LocaleSwitcher locale={locale} onLocaleChange={setLocale} />
             </div>
             <dl className="detail-list">
               <div>
                 <dt>{translate(locale, 'ui.label.country')}</dt>
-                <dd>{translate(locale, `country.${life.character.countryId}`)}</dd>
+                <dd>{translate(locale, `country.${activeLife.character.countryId}`)}</dd>
               </div>
               <div>
                 <dt>{translate(locale, 'ui.label.status')}</dt>
-                <dd>{formatStatuses(life.statuses, locale)}</dd>
+                <dd>{formatStatuses(activeLife.statuses, locale)}</dd>
               </div>
             </dl>
           </section>
         )}
       </div>
-      <Tabs
-        activeTab={activeTab}
-        ageUpDisabled={hasPendingEvent}
+      <div className="bottom-hud">
+        <Tabs
+          activeTab={activeTab}
+          ageUpDisabled={hasPendingEvent}
+          locale={locale}
+          onAgeUp={ageUpLife}
+          onTabChange={(tab: ActiveTab) => setActiveTab(tab)}
+        />
+        <div className="bottom-status-panel">
+          <StatusBars attributes={activeLife.character.attributes} locale={locale} />
+        </div>
+      </div>
+      <EventModal
+        event={activeLife.currentEvent}
         locale={locale}
-        onAgeUp={ageUpLife}
-        onTabChange={(tab: ActiveTab) => setActiveTab(tab)}
+        resultTextKey={eventResultTextKey}
+        onChoose={handleChooseEvent}
+        onDismissResult={() => setEventResult(null)}
       />
     </main>
   );

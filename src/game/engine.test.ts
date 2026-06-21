@@ -17,7 +17,14 @@ import {
   getSchoolState,
   pickNextEvent,
 } from './engine';
+import { migrateLifeState } from './migrations';
 import { createSeededRandom, pickWeighted } from './random';
+import { buyAsset } from './systems/assetSystem';
+import { applyForCareer } from './systems/careerSystem';
+import { attemptCrime } from './systems/crimeSystem';
+import { contractDisease } from './systems/healthSystem';
+import { addRelationship } from './systems/relationshipSystem';
+import type { LifeStateV2 } from './lifeStateV2';
 import type {
   AttributeName,
   Attributes,
@@ -57,6 +64,11 @@ interface TypeContract {
 describe('game primitives', () => {
   it('exports the required domain type contract', () => {
     expect({} as TypeContract).toBeDefined();
+  });
+
+  it('allows P1 relationship kinds', () => {
+    const kinds: RelationshipKind[] = ['friend', 'partner', 'spouse', 'ex', 'child'];
+    expect(kinds).toContain('partner');
   });
 
   it('clamps attributes into the 0-100 range', () => {
@@ -365,6 +377,82 @@ describe('life engine', () => {
     expect(withJobEvents.some((event) => event?.requires?.hasJob === true)).toBe(true);
   });
 
+  it('matches job-required events for v2 lives with active P1 careers', () => {
+    const life = migrateLifeState(createNewLife({
+      name: 'Mina Lin',
+      gender: 'female',
+      countryId: 'cn',
+      locale: 'zh-CN',
+      seed: 15,
+    }));
+    const employed: LifeStateV2 = {
+      ...life,
+      character: { ...life.character, age: 24 },
+      job: null,
+      career: { currentJobId: 'career.cashier', performance: 50, yearsInRole: 1, retired: false },
+    };
+    const workEvent: LifeEvent = {
+      id: 'p1_work_event',
+      textKey: 'event.p1Work.text',
+      minAge: 18,
+      maxAge: 65,
+      weight: 1,
+      tags: ['work'],
+      requires: { hasJob: true },
+      choices: [
+        {
+          id: 'ok',
+          textKey: 'event.p1Work.choice.ok',
+          resultKey: 'event.p1Work.result.ok',
+          effects: {},
+        },
+      ],
+    };
+
+    expect(eventMatchesLife(workEvent, employed)).toBe(true);
+  });
+
+  it('includes P1 catalog events in the runtime picker and applies their choice effects', () => {
+    const baseAdult = ageUpTo(
+      createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 16 }),
+      18,
+    );
+    const adult: LifeState = {
+      ...baseAdult,
+      currentEvent: null,
+      character: {
+        ...baseAdult.character,
+        attributes: { happiness: 50, health: 50, smarts: 50, looks: 50 },
+        money: 10000,
+      },
+    };
+    const picked = Array.from({ length: 300 }, (_, index) => pickNextEvent(adult, `p1-catalog-${index}`))
+      .find((event): event is LifeEvent => event?.id.startsWith('p1_event.') === true);
+
+    if (picked === undefined) {
+      throw new Error('Expected the runtime picker to include at least one P1 catalog event');
+    }
+    expect(picked).toMatchObject({
+      minAge: 18,
+      maxAge: 64,
+      tags: expect.arrayContaining(['p1', 'adult']),
+    });
+    expect(picked.choices).toEqual([
+      expect.objectContaining({
+        id: 'catalog_effect',
+        textKey: 'event.p1Catalog.choice.continue',
+        resultKey: 'event.p1Catalog.result',
+      }),
+    ]);
+
+    const choice = picked.choices[0];
+    const result = applyChoice({ ...adult, currentEvent: picked }, choice.id);
+
+    expect(result.currentEvent).toBeNull();
+    expect(result.log[0].textKey).toBe('event.p1Catalog.result');
+    expect(result.character.attributes).not.toEqual(adult.character.attributes);
+  });
+
   it('applies activity effects immutably and clamps attributes', () => {
     const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
     const next = applyActivity(life, {
@@ -456,6 +544,62 @@ describe('life engine', () => {
 
     expect(rested.usedActivitiesThisAge).toEqual(['rest']);
     expect(aged.usedActivitiesThisAge).toEqual([]);
+  });
+
+  it('settles P1 education and career during age up for v2 lives', () => {
+    const base = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'us', locale: 'en-US', seed: 44 }));
+    const adult = { ...base, currentEvent: null, character: { ...base.character, age: 22, attributes: { ...base.character.attributes, smarts: 75 } }, education: { ...base.education, level: 'university' as const, graduated: true } };
+    const employed = applyForCareer(adult, 'career.cashier');
+    const result: LifeStateV2 = ageUp(employed, 'education-career-engine');
+    expect(result.character.money).toBeGreaterThan(employed.character.money);
+    expect(result.career.yearsInRole).toBe(1);
+  });
+
+  it('settles P1 relationships during age up for v2 lives', () => {
+    const base = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'us', locale: 'en-US', seed: 52 }));
+    const adult = { ...base, currentEvent: null, character: { ...base.character, age: 25 } };
+    const withFriend = addRelationship(adult, { id: 'rel_alex', name: 'Alex Park', type: 'friend', closeness: 80 });
+    const result: LifeStateV2 = ageUp(withFriend, 'relationship-family-engine');
+    expect(result.relationships.find((item) => item.id === 'rel_alex')?.closeness).toBe(78);
+  });
+
+  it('settles P1 assets and health during age up for v2 lives', () => {
+    const base = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'us', locale: 'en-US', seed: 62 }));
+    const adult = { ...base, currentEvent: null, character: { ...base.character, age: 35, money: 100000 } };
+    const withAsset = buyAsset(adult, 'asset.used_compact');
+    const sick = contractDisease(withAsset, 'disease.common_cold');
+    const result: LifeStateV2 = ageUp(sick, 'assets-health-engine');
+    expect(result.assets[0].value).toBeLessThan(sick.assets[0].value);
+    expect(result.character.attributes.health).toBeLessThan(sick.character.attributes.health);
+  });
+
+  it('settles prison and unlocks achievements during age up for v2 lives', () => {
+    const base = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'us', locale: 'en-US', seed: 72 }));
+    const adult = { ...base, currentEvent: null, character: { ...base.character, age: 25 } };
+    const prisoner = attemptCrime(adult, 'crime.bank_robbery', 0.99);
+    const result: LifeStateV2 = ageUp(prisoner, 'crime-prison-achievement-engine');
+
+    expect(result.stats.prisonYears).toBe(1);
+    expect(result.achievements.unlocked).toContain('achievement.second_chance');
+  });
+
+  it('does not double settle legacy job salary for v2 lives with P1 careers', () => {
+    const base = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'us', locale: 'en-US', seed: 45 }));
+    const employed: LifeStateV2 = {
+      ...base,
+      currentEvent: null,
+      character: { ...base.character, age: 22, money: 1000 },
+      job: { jobId: 'cashier', titleKey: 'job.cashier.title', salary: 18000, years: 4 },
+      career: { currentJobId: 'career.software_analyst', performance: 50, yearsInRole: 0, retired: false },
+      education: { ...base.education, level: 'university', graduated: true },
+    };
+
+    const result = ageUp(employed, 'no-double-salary');
+
+    expect(result.character.money).toBe(63000);
+    expect(result.job?.years).toBe(4);
+    expect(result.career.yearsInRole).toBe(1);
+    expect(result.stats.totalIncome).toBe(62000);
   });
 
   it('records death log and an existing death cause key for deterministic high-risk death', () => {

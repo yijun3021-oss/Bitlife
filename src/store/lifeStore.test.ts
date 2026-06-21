@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ageUp, createNewLife } from '../game/engine';
+import type { LifeStateV2 } from '../game/lifeStateV2';
+import { migrateLifeState } from '../game/migrations';
 import type { LifeState } from '../game/types';
 import { SAVE_KEY, useLifeStore } from './lifeStore';
 
@@ -35,7 +37,7 @@ describe('life store', () => {
   });
 
   it('does not age up or save while a yearly event is unresolved', () => {
-    const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
+    const life = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }));
     useLifeStore.setState({ life, activeTab: 'activities' });
 
     useLifeStore.getState().ageUpLife();
@@ -60,6 +62,36 @@ describe('life store', () => {
     expect(useLifeStore.getState().locale).toBe('en-US');
     expect(useLifeStore.getState().life).toBeNull();
     expect(useLifeStore.getState().savedLife?.character.name).toBe('Mina Lin');
+  });
+
+  it('loads saved lives with P1 relationship kinds', () => {
+    const savedLife: LifeState = {
+      ...createNewLife({
+        name: 'Mina Lin',
+        gender: 'female',
+        countryId: 'cn',
+        locale: 'en-US',
+        seed: 12,
+      }),
+      relationships: [
+        { id: 'rel_friend', name: 'Alex Park', type: 'friend', closeness: 60, alive: true },
+        { id: 'rel_partner', name: 'Taylor Kim', type: 'partner', closeness: 80, alive: true },
+        { id: 'rel_spouse', name: 'Jordan Lin', type: 'spouse', closeness: 85, alive: true },
+        { id: 'rel_ex', name: 'Casey Wu', type: 'ex', closeness: 30, alive: true },
+        { id: 'rel_child', name: 'Mia Lin', type: 'child', closeness: 70, alive: true },
+      ],
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ version: 1, locale: 'en-US', life: savedLife }));
+
+    useLifeStore.getState().loadLife();
+
+    expect(useLifeStore.getState().savedLife?.relationships.map((relationship) => relationship.type)).toEqual([
+      'friend',
+      'partner',
+      'spouse',
+      'ex',
+      'child',
+    ]);
   });
 
   it('continues a loaded saved life on demand', () => {
@@ -275,7 +307,7 @@ describe('life store', () => {
   });
 
   it('applies relationship interactions to a specific family member', () => {
-    const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'en-US', seed: 12 });
+    const life = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'en-US', seed: 12 }));
     const mother = life.relationships.find((relationship) => relationship.type === 'mother');
     if (mother === undefined) {
       throw new Error('Expected mother relationship');
@@ -319,24 +351,74 @@ describe('life store', () => {
     expect(useLifeStore.getState().life).toBeNull();
   });
 
-  it('runs find job activity through engine behavior for an eligible adult', () => {
-    const adult = ageUpTo(
+  it('does not create legacy-only employment from the find job activity', () => {
+    const adult = migrateLifeState(ageUpTo(
       createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }),
       18,
-    );
+    ));
     useLifeStore.setState({ life: adult });
 
     useLifeStore.getState().runActivity('find_job');
 
-    expect(useLifeStore.getState().life?.job?.jobId).toBe('support_agent');
-    expect(localStorage.getItem(SAVE_KEY)).toContain('support_agent');
+    expect(useLifeStore.getState().life?.job).toBeNull();
+    expect(useLifeStore.getState().life?.career.currentJobId).toBeNull();
+    expect(localStorage.getItem(SAVE_KEY)).toBeNull();
+  });
+
+  it('bridges legacy job choices to P1 careers and pays P1 salary on age up', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(12345);
+    const baseLife = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
+    const adult = migrateLifeState({
+      ...baseLife,
+      character: {
+        ...baseLife.character,
+        age: 18,
+        money: 100,
+      },
+      school: { stage: 'finished', grade: 0, stress: 0 },
+      currentEvent: null,
+    });
+    useLifeStore.setState({ life: adult });
+
+    useLifeStore.getState().chooseJob('cashier');
+
+    const employedLife = useLifeStore.getState().life;
+    expect(employedLife?.job?.jobId).toBe('cashier');
+    expect(employedLife?.career.currentJobId).toBe('career.cashier');
+
+    useLifeStore.getState().ageUpLife();
+
+    expect(useLifeStore.getState().life?.character.money).toBe(18100);
+    expect(useLifeStore.getState().life?.stats.totalIncome).toBe(18000);
+    expect(useLifeStore.getState().life?.stats.workYears).toBe(1);
+  });
+
+  it('does not create legacy-only employment from unmapped legacy job choices', () => {
+    const baseLife = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
+    const adult = migrateLifeState({
+      ...baseLife,
+      character: {
+        ...baseLife.character,
+        age: 18,
+      },
+      school: { stage: 'finished', grade: 0, stress: 0 },
+      currentEvent: null,
+    });
+    useLifeStore.setState({ life: adult });
+
+    useLifeStore.getState().chooseJob('support_agent');
+
+    expect(useLifeStore.getState().life).toBe(adult);
+    expect(useLifeStore.getState().life?.job).toBeNull();
+    expect(useLifeStore.getState().life?.career.currentJobId).toBeNull();
+    expect(localStorage.getItem(SAVE_KEY)).toBeNull();
   });
 
   it('prevents once-per-year activities until the life ages up', () => {
-    const life = {
+    const life = migrateLifeState({
       ...createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }),
       currentEvent: null,
-    };
+    });
     useLifeStore.setState({ life });
 
     useLifeStore.getState().runActivity('rest');
@@ -353,7 +435,7 @@ describe('life store', () => {
   });
 
   it('does not write a save for invalid activity ids or underage find job', () => {
-    const infant = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
+    const infant = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }));
     useLifeStore.setState({ life: infant });
 
     useLifeStore.getState().runActivity('missing_activity');
@@ -364,10 +446,10 @@ describe('life store', () => {
   });
 
   it('does not write a save for invalid choices or missing current events', () => {
-    const life = {
+    const life = migrateLifeState({
       ...createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }),
       currentEvent: null,
-    };
+    });
     useLifeStore.setState({ life });
 
     useLifeStore.getState().chooseEvent('missing_choice');
@@ -377,8 +459,8 @@ describe('life store', () => {
   });
 
   it('does not age up, retab, or save an already dead life', () => {
-    const life = createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 });
-    const deadLife: LifeState = {
+    const life = migrateLifeState(createNewLife({ name: 'Mina Lin', gender: 'female', countryId: 'cn', locale: 'zh-CN', seed: 12 }));
+    const deadLife: LifeStateV2 = {
       ...life,
       character: {
         ...life.character,

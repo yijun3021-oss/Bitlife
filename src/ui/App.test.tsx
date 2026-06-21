@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../App';
 import { createNewLife } from '../game/engine';
-import type { LifeState } from '../game/types';
+import type { LifeStateV2 } from '../game/lifeStateV2';
+import { migrateLifeState } from '../game/migrations';
 import { SAVE_KEY, useLifeStore } from '../store/lifeStore';
 
 describe('App', () => {
@@ -46,6 +47,7 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: /Cashier/ }));
 
     expect(useLifeStore.getState().life?.job).not.toBeNull();
+    expect(useLifeStore.getState().life?.career.currentJobId).toBe('career.cashier');
     expect(screen.queryByText('Cashier')).not.toBeInTheDocument();
   });
 
@@ -114,16 +116,34 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'Age up' })).toBeDisabled();
   });
 
-  it('always offers at least two choices for the current yearly event', async () => {
+  it('shows the current yearly event as a modal with at least two choices', async () => {
     render(<App />);
 
     await userEvent.click(screen.getByRole('button', { name: 'English' }));
     await userEvent.type(screen.getByLabelText('Name'), 'Mina Lin');
     await userEvent.click(screen.getByRole('button', { name: 'Create life' }));
 
-    const eventPanel = screen.getByText('This year').closest('section');
-    expect(eventPanel).not.toBeNull();
-    expect(within(eventPanel!).getAllByRole('button').length).toBeGreaterThanOrEqual(2);
+    const eventDialog = screen.getByRole('dialog', { name: 'This year' });
+    expect(within(eventDialog).getAllByRole('button').length).toBeGreaterThanOrEqual(2);
+    expect(eventDialog.closest('.event-modal-backdrop')).not.toBeNull();
+  });
+
+  it('shows the yearly event result as a modal after choosing an option', async () => {
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'English' }));
+    await userEvent.type(screen.getByLabelText('Name'), 'Mina Lin');
+    await userEvent.click(screen.getByRole('button', { name: 'Create life' }));
+
+    const eventDialog = screen.getByRole('dialog', { name: 'This year' });
+    await userEvent.click(within(eventDialog).getAllByRole('button')[0]);
+
+    const resultDialog = screen.getByRole('dialog', { name: 'Result' });
+    expect(resultDialog).toHaveTextContent('tap anywhere to continue');
+
+    await userEvent.click(resultDialog);
+
+    expect(screen.queryByRole('dialog', { name: 'Result' })).not.toBeInTheDocument();
   });
 
   it('shows activity costs and gives feedback after running an activity', async () => {
@@ -193,7 +213,67 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: /Cashier/ }));
 
     expect(useLifeStore.getState().life?.job?.jobId).toBe('cashier');
+    expect(useLifeStore.getState().life?.career.currentJobId).toBe('career.cashier');
     expect(screen.queryByText('Cashier')).not.toBeInTheDocument();
+  });
+
+  it('hides legacy job choices when a P1 career is active', () => {
+    const adult = makeLife({ age: 18, locale: 'en-US' });
+    useLifeStore.setState({
+      locale: 'en-US',
+      life: {
+        ...adult,
+        career: { ...adult.career, currentJobId: 'career.cashier' },
+        currentEvent: null,
+        job: null,
+      },
+      activeTab: 'activities',
+    });
+    render(<App />);
+
+    expect(screen.queryByText('Cashier')).not.toBeInTheDocument();
+    expect(screen.queryByText('Office assistant')).not.toBeInTheDocument();
+  });
+
+  it('filters legacy job choices to P1-compatible careers', () => {
+    const adult = makeLife({ age: 18, locale: 'en-US' });
+    useLifeStore.setState({
+      locale: 'en-US',
+      life: { ...adult, currentEvent: null },
+      activeTab: 'activities',
+    });
+    render(<App />);
+
+    expect(screen.getByText('Cashier')).toBeInTheDocument();
+    expect(screen.getByText('Office assistant')).toBeInTheDocument();
+    expect(screen.queryByText('Cook')).not.toBeInTheDocument();
+    expect(screen.queryByText('Driver')).not.toBeInTheDocument();
+    expect(screen.queryByText('Support agent')).not.toBeInTheDocument();
+  });
+
+  it('shows P1 career details in the work summary', () => {
+    const adult = makeLife({ age: 18, locale: 'en-US' });
+    useLifeStore.setState({
+      locale: 'en-US',
+      life: {
+        ...adult,
+        career: { currentJobId: 'career.cashier', performance: 61, yearsInRole: 3, retired: false },
+        currentEvent: null,
+        job: null,
+      },
+      activeTab: 'schoolWork',
+    });
+    render(<App />);
+
+    const workPanel = screen.getByText('Work').closest('section');
+    expect(workPanel).not.toBeNull();
+    expect(within(workPanel!).queryByText('No job yet')).not.toBeInTheDocument();
+    expect(within(workPanel!).getByText('Cashier')).toBeInTheDocument();
+    expect(within(workPanel!).getByText('18,000')).toBeInTheDocument();
+    expect(within(workPanel!).getByText('Performance')).toBeInTheDocument();
+    expect(within(workPanel!).getByText('61')).toBeInTheDocument();
+    expect(within(workPanel!).getByText('Years in role')).toBeInTheDocument();
+    expect(within(workPanel!).getByText('3')).toBeInTheDocument();
   });
 
   it('uses English form labels and actions after switching language', async () => {
@@ -278,13 +358,13 @@ describe('App', () => {
   });
 
   it('translates known statuses instead of showing internal codes', () => {
-    const life = createNewLife({
+    const life = migrateLifeState(createNewLife({
       name: 'Alex Reed',
       gender: 'female',
       countryId: 'us',
       locale: 'en-US',
       seed: 'status-test',
-    });
+    }));
     useLifeStore.setState({
       locale: 'en-US',
       life: { ...life, statuses: ['injured'] },
@@ -298,13 +378,13 @@ describe('App', () => {
   });
 
   it('uses a localized fallback for unknown statuses', () => {
-    const life = createNewLife({
+    const life = migrateLifeState(createNewLife({
       name: 'Alex Reed',
       gender: 'female',
       countryId: 'us',
       locale: 'en-US',
       seed: 'unknown-status-test',
-    });
+    }));
     useLifeStore.setState({
       locale: 'en-US',
       life: { ...life, statuses: ['mystery_status'] },
@@ -352,8 +432,8 @@ function makeLife({
 }: {
   age: number;
   alive?: boolean;
-  locale: LifeState['locale'];
-}): LifeState {
+  locale: LifeStateV2['locale'];
+}): LifeStateV2 {
   const life = createNewLife({
     name: 'Mina Lin',
     gender: 'female',
@@ -362,7 +442,7 @@ function makeLife({
     seed: `app-test-${age}-${locale}`,
   });
 
-  return {
+  return migrateLifeState({
     ...life,
     character: { ...life.character, age, alive },
     school: age < 18 ? life.school : { stage: 'finished', grade: 0, stress: 0 },
@@ -370,5 +450,5 @@ function makeLife({
     deathSummary: alive
       ? null
       : { age, causeKey: 'death.oldAge', netWorth: life.character.money, logKey: 'log.death' },
-  };
+  });
 }

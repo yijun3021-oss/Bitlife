@@ -1,7 +1,7 @@
 export type Locale = 'zh-CN' | 'en-US';
 export type Gender = 'female' | 'male' | 'non_binary';
 export type LifeStage = 'infant' | 'child' | 'teen' | 'adult' | 'elder';
-export type RelationshipKind = 'mother' | 'father' | 'sibling';
+export type RelationshipKind = 'mother' | 'father' | 'sibling' | 'friend' | 'partner' | 'spouse' | 'ex' | 'child';
 export const PASS_EVENT_CHOICE_ID = 'pass_event';
 type SchoolStage = 'none' | 'elementary' | 'middle' | 'finished';
 export type AttributeName = keyof Attributes;
