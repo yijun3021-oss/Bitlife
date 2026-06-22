@@ -209,15 +209,15 @@ describe('App', () => {
     });
     render(<App />);
 
-    await userEvent.click(screen.getByRole('button', { name: /Rest/ }));
+    await userEvent.click(getScreenButton(/Rest/));
 
-    expect(screen.getByRole('button', { name: /Rest/ })).toBeDisabled();
+    expect(getScreenButton(/Rest/)).toBeDisabled();
     expect(screen.getByText('Used this year')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Age up' }));
     await userEvent.click(screen.getByRole('button', { name: 'Activities' }));
 
-    expect(screen.getByRole('button', { name: /Rest/ })).not.toBeDisabled();
+    expect(getScreenButton(/Rest/)).not.toBeDisabled();
   });
 
   it('locks study for the current year after it is used', async () => {
@@ -528,4 +528,13 @@ function getTimelineHistory(): HTMLElement {
   }
 
   return history;
+}
+
+function getScreenButton(name: string | RegExp): HTMLElement {
+  const screenArea = document.querySelector('.screen-area');
+  if (!(screenArea instanceof HTMLElement)) {
+    throw new Error('Expected screen area');
+  }
+
+  return within(screenArea).getByRole('button', { name });
 }
